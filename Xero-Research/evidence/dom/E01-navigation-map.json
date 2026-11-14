@@ -1,0 +1,328 @@
+{
+    "evidenceId":  "E01-NAV",
+    "source":  "https://go.xero.com/app/\u003cSHORTCODE\u003e/homepage (Top navigation bar)",
+    "capturedAt":  "2026-11-14T21:08:55+08:00",
+    "sanitized":  true,
+    "items":  [
+                  {
+                      "text":  "",
+                      "href":  "https://go.xero.com/Dashboard"
+                  },
+                  {
+                      "text":  "Settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings"
+                  },
+                  {
+                      "text":  "Subscription and billing",
+                      "href":  "https://my.xero.com/app/billing/subscription/redirect/view/!W5gW!"
+                  },
+                  {
+                      "text":  "Demo Company",
+                      "href":  "https://my.xero.com/!xkcD/Dashboard/DemoOrganisation/CreateDemoAndLogin"
+                  },
+                  {
+                      "text":  "Add new organisation",
+                      "href":  "https://go.xero.com/app/onboarding-ui"
+                  },
+                  {
+                      "text":  "My Xero",
+                      "href":  "https://my.xero.com"
+                  },
+                  {
+                      "text":  "Hubdoc",
+                      "href":  "https://go.xero.com/app/!W5gW!/connect-hubdoc"
+                  },
+                  {
+                      "text":  "Analytics",
+                      "href":  "https://go.xero.com/app/!W5gW!/analytics/compare-plans"
+                  },
+                  {
+                      "text":  "Expenses",
+                      "href":  "https://go.xero.com/app/!W5gW!/expenses"
+                  },
+                  {
+                      "text":  "Xero App Store",
+                      "href":  "https://apps.xero.com/login"
+                  },
+                  {
+                      "text":  "Sales overview",
+                      "href":  "https://go.xero.com/app/!W5gW!/sales/overview"
+                  },
+                  {
+                      "text":  "Invoices",
+                      "href":  "https://go.xero.com/AccountsReceivable/Search.aspx"
+                  },
+                  {
+                      "text":  "Payment links",
+                      "href":  "https://go.xero.com/app/!W5gW!/payment-links"
+                  },
+                  {
+                      "text":  "Online payments",
+                      "href":  "https://go.xero.com/app/!W5gW!/payment-services"
+                  },
+                  {
+                      "text":  "Quotes",
+                      "href":  "https://go.xero.com/Accounts/Receivable/Quotes/Search"
+                  },
+                  {
+                      "text":  "Products and services",
+                      "href":  "https://go.xero.com/Accounts/Inventory"
+                  },
+                  {
+                      "text":  "Customers",
+                      "href":  "https://go.xero.com/app/!W5gW!/contacts/customers"
+                  },
+                  {
+                      "text":  "Sales settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#sales"
+                  },
+                  {
+                      "text":  "Purchases overview",
+                      "href":  "https://go.xero.com/Accounts/Payable/Dashboard/"
+                  },
+                  {
+                      "text":  "Bills",
+                      "href":  "https://go.xero.com/app/!W5gW!/bills"
+                  },
+                  {
+                      "text":  "Online bill payments",
+                      "href":  "https://go.xero.com/app/!W5gW!/payments?utm_source=global_nav"
+                  },
+                  {
+                      "text":  "Purchase orders",
+                      "href":  "https://go.xero.com/Accounts/Payable/PurchaseOrders/Search"
+                  },
+                  {
+                      "text":  "Expenses",
+                      "href":  "https://go.xero.com/app/!W5gW!/expenses/"
+                  },
+                  {
+                      "text":  "Suppliers",
+                      "href":  "https://go.xero.com/app/!W5gW!/contacts/suppliers"
+                  },
+                  {
+                      "text":  "Purchases settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#purchases"
+                  },
+                  {
+                      "text":  "All reports",
+                      "href":  "https://reporting.xero.com/!W5gW!"
+                  },
+                  {
+                      "text":  "DashboardsOpens a new tab",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/Analytics/dashboards?source=navigation"
+                  },
+                  {
+                      "text":  "Cash flow manager",
+                      "href":  "https://go.xero.com/app/!W5gW!/analytics/cashflow-manager"
+                  },
+                  {
+                      "text":  "VisualisationsOpens a new tab",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/Analytics/profitability?source=navigation"
+                  },
+                  {
+                      "text":  "Business health scorecardOpens a new tab",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/Analytics/business-health-scorecards?source=navigation"
+                  },
+                  {
+                      "text":  "Account Transactions",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/1009"
+                  },
+                  {
+                      "text":  "Activity Statement",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/690e802c-2842-4039-88a7-d07893312608"
+                  },
+                  {
+                      "text":  "Aged Payables Summary",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/1400"
+                  },
+                  {
+                      "text":  "Aged Receivables Summary",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/1001"
+                  },
+                  {
+                      "text":  "Balance Sheet",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/1017"
+                  },
+                  {
+                      "text":  "Profit and Loss",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/1016"
+                  },
+                  {
+                      "text":  "Short-term cash flow",
+                      "href":  "https://go.xero.com/app/!W5gW!/cashflow"
+                  },
+                  {
+                      "text":  "Business snapshot",
+                      "href":  "https://go.xero.com/app/!W5gW!/business-snapshot/"
+                  },
+                  {
+                      "text":  "Payroll overview",
+                      "href":  "https://payroll.xero.com/Home?CID=!W5gW!"
+                  },
+                  {
+                      "text":  "Employees",
+                      "href":  "https://go.xero.com/app/!W5gW!/payroll/employees"
+                  },
+                  {
+                      "text":  "Leave",
+                      "href":  "https://payroll.xero.com/Leave?CID=!W5gW!"
+                  },
+                  {
+                      "text":  "Timesheets",
+                      "href":  "https://payroll.xero.com/Timesheets?CID=!W5gW!"
+                  },
+                  {
+                      "text":  "Pay employees",
+                      "href":  "https://go.xero.com/app/!W5gW!/payroll/pay"
+                  },
+                  {
+                      "text":  "Superannuation",
+                      "href":  "https://go.xero.com/app/!W5gW!/payroll/superannuation"
+                  },
+                  {
+                      "text":  "Payroll history",
+                      "href":  "https://go.xero.com/app/!W5gW!/activity-summary/payroll"
+                  },
+                  {
+                      "text":  "Payroll settings",
+                      "href":  "https://payroll.xero.com/Settings?CID=!W5gW!"
+                  },
+                  {
+                      "text":  "Bank accounts",
+                      "href":  "https://go.xero.com/Bank/BankAccounts.aspx"
+                  },
+                  {
+                      "text":  "Bank rules",
+                      "href":  "https://go.xero.com/app/bank-rules"
+                  },
+                  {
+                      "text":  "Documents",
+                      "href":  "https://go.xero.com/Docs/Folders"
+                  },
+                  {
+                      "text":  "Chart of accounts",
+                      "href":  "https://go.xero.com/GeneralLedger/ChartOfAccounts.aspx"
+                  },
+                  {
+                      "text":  "Fixed assets",
+                      "href":  "https://fixedassets.xero.com/?CID=!W5gW!\u0026fromNav=true#assets"
+                  },
+                  {
+                      "text":  "Manual journals",
+                      "href":  "https://go.xero.com/Journal/Search.aspx"
+                  },
+                  {
+                      "text":  "Accounting settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#accounting"
+                  },
+                  {
+                      "text":  "Activity statements",
+                      "href":  "https://reporting.xero.com/!W5gW!/v2/Run/New/690e802c-2842-4039-88a7-d07893312608"
+                  },
+                  {
+                      "text":  "Taxable payments annual report",
+                      "href":  "https://go.xero.com/app/!W5gW!/tpar"
+                  },
+                  {
+                      "text":  "Tax settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#tax"
+                  },
+                  {
+                      "text":  "All contacts",
+                      "href":  "https://go.xero.com/app/!W5gW!/contacts/all"
+                  },
+                  {
+                      "text":  "Customers",
+                      "href":  "https://go.xero.com/app/!W5gW!/contacts/customers"
+                  },
+                  {
+                      "text":  "Suppliers",
+                      "href":  "https://go.xero.com/app/!W5gW!/contacts/suppliers"
+                  },
+                  {
+                      "text":  "Contacts settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#contacts"
+                  },
+                  {
+                      "text":  "All projects",
+                      "href":  "https://go.xero.com/app/!W5gW!/projects"
+                  },
+                  {
+                      "text":  "Time entries",
+                      "href":  "https://go.xero.com/app/!W5gW!/projects/time-entries"
+                  },
+                  {
+                      "text":  "Staff time overview",
+                      "href":  "https://go.xero.com/app/!W5gW!/projects/staff-time-overview"
+                  },
+                  {
+                      "text":  "Projects settings",
+                      "href":  "https://go.xero.com/app/!W5gW!/settings#projects"
+                  },
+                  {
+                      "text":  "InvoiceAltI",
+                      "href":  "https://go.xero.com/AccountsReceivable/Edit.aspx"
+                  },
+                  {
+                      "text":  "Payment linkAltL",
+                      "href":  "https://go.xero.com/app/!W5gW!/payment-links/create"
+                  },
+                  {
+                      "text":  "BillAltB",
+                      "href":  "https://go.xero.com/AccountsPayable/Edit.aspx?referrer=navigation"
+                  },
+                  {
+                      "text":  "ContactAltC",
+                      "href":  "https://go.xero.com/Contacts/Edit.aspx"
+                  },
+                  {
+                      "text":  "QuoteAltQ",
+                      "href":  "https://go.xero.com/Accounts/Receivable/Quotes/New"
+                  },
+                  {
+                      "text":  "Purchase orderAltO",
+                      "href":  "https://go.xero.com/Accounts/Payable/PurchaseOrders/New"
+                  },
+                  {
+                      "text":  "Document uploadAltU",
+                      "href":  "https://go.xero.com/Docs/Folders"
+                  },
+                  {
+                      "text":  "Manual journalAltJ",
+                      "href":  "https://go.xero.com/Journal/Edit.aspx"
+                  },
+                  {
+                      "text":  "Spend moneyAltS",
+                      "href":  "https://go.xero.com/Banking/Account/#select/spend"
+                  },
+                  {
+                      "text":  "Receive moneyAltR",
+                      "href":  "https://go.xero.com/Banking/Account/#select/receive"
+                  },
+                  {
+                      "text":  "Transfer moneyAltT",
+                      "href":  "https://go.xero.com/Bank/Transfer.aspx"
+                  },
+                  {
+                      "text":  "ProfileProfile",
+                      "href":  "https://my.xero.com/Go/UserProfile"
+                  },
+                  {
+                      "text":  "AccountAccount",
+                      "href":  "https://my.xero.com/Go/MyAccount"
+                  },
+                  {
+                      "text":  "SupportSupportOpens a new tab",
+                      "href":  "https://central.xero.com/services/auth/sso/Xero/?startURL=/0/support"
+                  },
+                  {
+                      "text":  "Product ideasProduct ideasOpens a new tab",
+                      "href":  "https://productideas.xero.com"
+                  },
+                  {
+                      "text":  "Log outLog out",
+                      "href":  "https://go.xero.com/logout"
+                  }
+              ]
+}

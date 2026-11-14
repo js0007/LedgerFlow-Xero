@@ -1,0 +1,492 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Deterministic end-to-end replay fixtures empirically captured on live AU Xero organisation (!W5gW!). Clean MVP baseline tests are isolated in suite_1_mvp_baseline; extended regression scenarios build cumulatively in suite_2_extended_regression.",
+  "seedReference": "../schemas/au-seed-data.json",
+  "organisationSetup": {
+    "countryCode": "AU",
+    "currency": "AUD",
+    "financialYearEnd": "30 June",
+    "defaultTaxSettings": {
+      "sales": "EXCLUSIVE",
+      "purchases": "INCLUSIVE"
+    },
+    "basSettingsDefault": {
+      "reportingType": "SimpleBas",
+      "gstCalculationPeriod": "GstQuarterly",
+      "gstAccountingMethod": "Accruals",
+      "paygIncomeTaxMethod": "MethodNone",
+      "paygWithholdingPeriod": "WithholdingNone"
+    },
+    "bankAccountsAdded": [
+      {
+        "name": "Business Operating Account",
+        "accountType": "BANK",
+        "currency": "AUD",
+        "bsbAccountMasked": "0123456789"
+      }
+    ],
+    "contacts": [
+      {
+        "key": "CUST_ACME",
+        "name": "Acme Customer Pty Ltd",
+        "accountNumber": "ACP"
+      },
+      {
+        "key": "CUST_WALKIN",
+        "name": "Walk-in Cash Customer"
+      },
+      {
+        "key": "SUPP_AUSPOST",
+        "name": "AusPost Office Supplies"
+      }
+    ]
+  },
+  "suite_1_mvp_baseline": {
+    "description": "Clean empty-org baseline: 3 core MVP business scenarios plus Trial Balance, P&L, Balance Sheet, Journal Report, and Simpler BAS assertions (Evidence E21-E28b).",
+    "initialState": "0 transactions on seeded AU org",
+    "steps": [
+      {
+        "stepId": "MVP-S1",
+        "name": "Create and Approve Tax-Inclusive Sales Invoice",
+        "evidence": ["E21-PAGE", "E24-PAGE"],
+        "input": {
+          "action": "CREATE_AND_APPROVE_INVOICE",
+          "invoiceNumber": "INV-0001",
+          "contact": "Acme Customer Pty Ltd",
+          "date": "2026-11-14",
+          "taxMode": "INCLUSIVE",
+          "lines": [
+            {
+              "description": "Consulting Service - MVP Scenario 1",
+              "quantity": 1,
+              "unitPrice": 110.00,
+              "accountCode": "200",
+              "taxRateName": "GST on Income",
+              "taxType": "OUTPUT"
+            }
+          ]
+        },
+        "expected": {
+          "status": "AUTHORISED",
+          "subTotal": 100.00,
+          "taxTotal": 10.00,
+          "totalAmount": 110.00,
+          "journalId": 1,
+          "glLines": [
+            { "accountCode": "610", "accountName": "Accounts Receivable", "debit": 110.00, "credit": 0.00, "taxType": null },
+            { "accountCode": "200", "accountName": "Sales", "debit": 0.00, "credit": 100.00, "taxType": "OUTPUT" },
+            { "accountCode": "820", "accountName": "GST", "debit": 0.00, "credit": 10.00, "taxType": null }
+          ]
+        }
+      },
+      {
+        "stepId": "MVP-S2",
+        "name": "Import Bank Statement CSV and Reconcile Customer Payment against INV-0001",
+        "evidence": ["E22-CSV", "E22-PAGE", "E24-PAGE"],
+        "input": {
+          "action": "IMPORT_BANK_STATEMENT_AND_MATCH",
+          "bankAccount": "Business Operating Account",
+          "statementLinesImported": [
+            { "date": "2026-11-14", "amount": 110.00, "payee": "Acme Customer Pty Ltd", "reference": "INV-0001" },
+            { "date": "2026-11-14", "amount": 110.00, "payee": "Walk-in Cash Customer", "reference": "CASH-001" }
+          ],
+          "matchStatementLineIndex": 0,
+          "targetInvoiceNumber": "INV-0001"
+        },
+        "expected": {
+          "preReconcileStatementBalance": 220.00,
+          "postReconcileBalanceInXero": 110.00,
+          "invoiceStatus": "PAID",
+          "journalId": 2,
+          "glLines": [
+            { "accountName": "Business Operating Account", "debit": 110.00, "credit": 0.00 },
+            { "accountCode": "610", "accountName": "Accounts Receivable", "debit": 0.00, "credit": 110.00 }
+          ]
+        }
+      },
+      {
+        "stepId": "MVP-S3",
+        "name": "Direct Bank Feed Create Receive Money (Cash Coding GL Equivalent)",
+        "evidence": ["E23-PAGE", "E24-PAGE"],
+        "input": {
+          "action": "RECONCILE_CREATE_RECEIVE_MONEY",
+          "bankAccount": "Business Operating Account",
+          "statementLineIndex": 1,
+          "date": "2026-11-14",
+          "amount": 110.00,
+          "taxMode": "INCLUSIVE",
+          "who": "Walk-in Cash Customer",
+          "accountCode": "200",
+          "taxRateName": "GST on Income",
+          "taxType": "OUTPUT",
+          "why": "Cash Coding Direct Sale"
+        },
+        "expected": {
+          "postReconcileStatementBalance": 220.00,
+          "postReconcileBalanceInXero": 220.00,
+          "journalId": 3,
+          "glLines": [
+            { "accountName": "Business Operating Account", "debit": 110.00, "credit": 0.00, "taxType": null },
+            { "accountCode": "200", "accountName": "Sales", "debit": 0.00, "credit": 100.00, "taxType": "OUTPUT" },
+            { "accountCode": "820", "accountName": "GST", "debit": 0.00, "credit": 10.00, "taxType": null }
+          ]
+        }
+      }
+    ],
+    "endOfPeriodAssertions": {
+      "journalReport1098": {
+        "evidence": "E24-PAGE",
+        "journalCount": 3,
+        "totalDebits": 330.00,
+        "totalCredits": 330.00
+      },
+      "trialBalance1005": {
+        "evidence": "E25-PAGE",
+        "asAt": "2026-11-30",
+        "rows": [
+          { "account": "Business Operating Account", "debit": 220.00, "credit": 0.00 },
+          { "account": "200 - Sales", "debit": 0.00, "credit": 200.00 },
+          { "account": "820 - GST", "debit": 0.00, "credit": 20.00 }
+        ],
+        "zeroNetHiddenAccounts": ["610 - Accounts Receivable"]
+      },
+      "profitAndLoss1016": {
+        "evidence": "E26-PAGE",
+        "period": "2026-11-01 to 2026-11-30",
+        "basis": "Accrual",
+        "tradingIncomeSales": 200.00,
+        "grossProfit": 200.00,
+        "netProfit": 200.00
+      },
+      "balanceSheet1017": {
+        "evidence": "E27-PAGE",
+        "asAt": "2026-11-30",
+        "bank": 220.00,
+        "totalAssets": 220.00,
+        "currentLiabilitiesGst": 20.00,
+        "netAssets": 200.00,
+        "currentYearEarnings": 200.00,
+        "totalEquity": 200.00
+      },
+      "simplerBasAccrual": {
+        "evidence": ["E28-PAGE", "E28-NET"],
+        "period": "2026-10-01 to 2026-12-31",
+        "gstAccountingMethod": "Accruals",
+        "fields": {
+          "G1_totalSalesGross": 220,
+          "1A_gstOnSales": 20,
+          "1B_gstOnPurchases": 0,
+          "G2_exportSales": 0,
+          "G3_gstFreeSales": 0,
+          "G10_capitalPurchases": 0,
+          "G11_nonCapitalPurchases": 0,
+          "8A_totalOwedToAto": 20,
+          "8B_totalOwedByAto": 0,
+          "9_paymentAmount": 20
+        },
+        "note": "Xero AU Simpler BAS G1 reports GST-inclusive totalGross (220), not net sales (200)."
+      }
+    }
+  },
+  "suite_2_extended_regression": {
+    "description": "Cumulative extended gap-closing scenarios executed sequentially on top of suite_1_mvp_baseline state in live AU org (!W5gW!), plus validation/negative tests (Evidence E29-E38).",
+    "precondition": "suite_1_mvp_baseline completed (Bank=220.00, Sales=200.00, GST=20.00)",
+    "steps": [
+      {
+        "stepId": "EXT-01",
+        "name": "Manual Journal Chart-of-Accounts Filtering (47 of 54) & Auto-Reversing Journal Pair",
+        "evidence": ["E29-NET", "E29-PAGE"],
+        "input": {
+          "action": "POST_MANUAL_JOURNAL_WITH_AUTO_REVERSE",
+          "narration": "Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+          "date": "2026-11-14",
+          "autoReversingDate": "2026-12-01",
+          "lineAmountTypes": "NO_TAX",
+          "showOnCashBasisReports": true,
+          "lines": [
+            { "accountCode": "469", "accountName": "Rent", "debit": 100.00, "credit": 0.00, "taxType": "BASEXCLUDED" },
+            { "accountCode": "850", "accountName": "Suspense", "debit": 0.00, "credit": 100.00, "taxType": "BASEXCLUDED" }
+          ]
+        },
+        "expected": {
+          "parentJournal": {
+            "journalNumber": 5,
+            "date": "2026-11-14",
+            "status": "POSTED",
+            "lines": [
+              { "accountCode": "469", "amount": 100.00 },
+              { "accountCode": "850", "amount": -100.00 }
+            ]
+          },
+          "autoGeneratedReversalJournal": {
+            "journalNumber": 4,
+            "narration": "Reversal: Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+            "date": "2026-12-01",
+            "status": "POSTED",
+            "parentManualJournalLinked": true,
+            "lines": [
+              { "accountCode": "469", "amount": -100.00 },
+              { "accountCode": "850", "amount": 100.00 }
+            ]
+          },
+          "coaFilterAssertion": {
+            "defaultCoaNonBankCount": 54,
+            "manualJournalSelectableCount": 47,
+            "excludedCodes": ["497", "498", "610", "630", "800", "801", "877"],
+            "excludedTypes": ["BANK"],
+            "includedSystemAccountsVerified": ["804", "820", "825", "826", "840", "850", "860", "960"]
+          }
+        }
+      },
+      {
+        "stepId": "EXT-02",
+        "name": "Purchase Bill Tax-Inclusive Entry -> Approved Tax-Exclusive Display & AP Posting",
+        "evidence": ["E32-PAGE", "E35-PAGE"],
+        "input": {
+          "action": "CREATE_AND_APPROVE_PURCHASE_BILL",
+          "supplier": "AusPost Office Supplies",
+          "date": "2026-11-14",
+          "dueDate": "2026-11-21",
+          "reference": "BILL-0001",
+          "entryTaxMode": "INCLUSIVE",
+          "lines": [
+            {
+              "description": "Office stationery restock",
+              "quantity": 1,
+              "unitPrice": 110.00,
+              "accountCode": "461",
+              "accountName": "Printing & Stationery",
+              "taxRateName": "GST on Expenses",
+              "taxType": "INPUT"
+            }
+          ]
+        },
+        "expected": {
+          "status": "AWAITING_PAYMENT",
+          "approvedViewTaxModeNormalized": "EXCLUSIVE",
+          "approvedViewUnitPriceNormalized": 100.00,
+          "subTotal": 100.00,
+          "taxTotal": 10.00,
+          "totalAmount": 110.00,
+          "glLines": [
+            { "accountCode": "461", "accountName": "Printing & Stationery", "debit": 100.00, "credit": 0.00, "taxType": "INPUT" },
+            { "accountCode": "820", "accountName": "GST", "debit": 10.00, "credit": 0.00 },
+            { "accountCode": "800", "accountName": "Accounts Payable", "debit": 0.00, "credit": 110.00 }
+          ]
+        }
+      },
+      {
+        "stepId": "EXT-03",
+        "name": "Invoice #2, Partial Payment, and Sales Credit Note Allocation",
+        "evidence": ["E33-PAGE", "E35-PAGE", "E36-NET"],
+        "input": {
+          "subSteps": [
+            {
+              "subStepId": "EXT-03A",
+              "action": "CREATE_AND_APPROVE_INVOICE",
+              "invoiceNumber": "INV-0002",
+              "contact": "Acme Customer Pty Ltd",
+              "date": "2026-11-14",
+              "dueDate": "2026-11-22",
+              "reference": "EXT-CREDIT-TEST",
+              "taxMode": "EXCLUSIVE",
+              "lines": [
+                {
+                  "description": "Consulting Retainer - Credit Note Test",
+                  "quantity": 1,
+                  "unitPrice": 100.00,
+                  "accountCode": "200",
+                  "taxRateName": "GST on Income",
+                  "taxType": "OUTPUT"
+                }
+              ]
+            },
+            {
+              "subStepId": "EXT-03B",
+              "action": "RECORD_PAYMENT_ON_INVOICE",
+              "invoiceNumber": "INV-0002",
+              "amountPaid": 55.00,
+              "datePaid": "2026-11-14",
+              "paidToAccount": "Business Operating Account",
+              "reference": "PART-PAY-55"
+            },
+            {
+              "subStepId": "EXT-03C",
+              "action": "CREATE_APPROVE_AND_ALLOCATE_SALES_CREDIT_NOTE",
+              "creditNoteNumber": "CN-0003",
+              "contact": "Acme Customer Pty Ltd",
+              "date": "2026-11-14",
+              "reference": "CREDIT-INV-0002",
+              "taxMode": "EXCLUSIVE",
+              "lines": [
+                {
+                  "description": "50% Fee Adjustment on INV-0002",
+                  "quantity": 1,
+                  "unitPrice": 50.00,
+                  "accountCode": "200",
+                  "taxRateName": "GST on Income",
+                  "taxType": "OUTPUT"
+                }
+              ],
+              "allocateTo": [
+                { "invoiceNumber": "INV-0002", "amount": 55.00, "allocationDate": "2026-11-14" }
+              ]
+            }
+          ]
+        },
+        "expected": {
+          "invoiceNumberSequenceSharedWithCreditNotes": ["INV-0001", "INV-0002", "CN-0003"],
+          "inv0002": {
+            "total": 110.00,
+            "afterPartialPayment": { "paid": 55.00, "due": 55.00 },
+            "afterCreditAllocation": { "status": "PAID", "due": 0.00 }
+          },
+          "cn0003": {
+            "subTotal": 50.00,
+            "tax": 5.00,
+            "total": 55.00,
+            "autoRedirectToAllocateWhenUnpaidInvoicesExist": true,
+            "statusAfterAllocation": "PAID",
+            "remainingCredit": 0.00
+          },
+          "bankBalanceInXero": 275.00,
+          "bankStatementBalance": 220.00,
+          "glPosting": {
+            "inv0002": [
+              { "accountCode": "610", "debit": 110.00, "credit": 0.00 },
+              { "accountCode": "200", "debit": 0.00, "credit": 100.00 },
+              { "accountCode": "820", "debit": 0.00, "credit": 10.00 }
+            ],
+            "partPay55": [
+              { "accountName": "Business Operating Account", "debit": 55.00, "credit": 0.00 },
+              { "accountCode": "610", "debit": 0.00, "credit": 55.00 }
+            ],
+            "cn0003": [
+              { "accountCode": "200", "debit": 50.00, "credit": 0.00 },
+              { "accountCode": "820", "debit": 5.00, "credit": 0.00 },
+              { "accountCode": "610", "debit": 0.00, "credit": 55.00 }
+            ],
+            "creditAllocationGlEffect": [
+              { "accountCode": "610", "debit": 55.00, "credit": 55.00, "note": "Offsetting AR pair emitted on allocation" }
+            ]
+          }
+        }
+      },
+      {
+        "stepId": "EXT-04",
+        "name": "Cumulative General Ledger Detail (1071) & Accrual vs Cash P&L Comparison (1016)",
+        "evidence": ["E35-PAGE"],
+        "input": {
+          "action": "RUN_REPORTS",
+          "period": "2026-11-01 to 2026-11-30"
+        },
+        "expected": {
+          "generalLedgerDetail1071": {
+            "totalRows": 48,
+            "totalDebits": 815.00,
+            "totalCredits": 815.00
+          },
+          "profitAndLossAccrual": {
+            "accrualBasis": true,
+            "sales200": 250.00,
+            "grossProfit": 250.00,
+            "printingAndStationery461": 100.00,
+            "rent469": 100.00,
+            "totalOperatingExpenses": 200.00,
+            "netProfit": 50.00
+          },
+          "profitAndLossCash": {
+            "accrualBasis": false,
+            "sales200": 250.00,
+            "grossProfit": 250.00,
+            "printingAndStationery461": 0.00,
+            "rent469": 100.00,
+            "totalOperatingExpenses": 100.00,
+            "netProfit": 150.00,
+            "keyParityRule": "Unpaid BILL-0001 drops out on Cash basis; Manual Journal #5 remains included because showOnCashBasisReports=true."
+          }
+        }
+      },
+      {
+        "stepId": "EXT-05",
+        "name": "Cumulative Simpler BAS Accrual vs Cash Comparison",
+        "evidence": ["E36-PAGE", "E36-NET"],
+        "input": {
+          "action": "RUN_BAS_UNDER_BOTH_METHODS",
+          "period": "2026-10-01 to 2026-12-31"
+        },
+        "expected": {
+          "accrualBas": {
+            "G1": 275,
+            "1A": 25,
+            "1B": 10,
+            "G11": 110,
+            "8A": 25,
+            "8B": 10,
+            "9_paymentAmount": 15
+          },
+          "cashBas": {
+            "G1": 275,
+            "1A": 25,
+            "1B": 0,
+            "G11": 0,
+            "8A": 25,
+            "8B": 0,
+            "9_paymentAmount": 25,
+            "gstReportV2TransactionCount": 9,
+            "creditNoteAllocationCashBasLines": {
+              "cn0003": { "gross": -55, "gst": -5, "net": -50 },
+              "inv0002": { "gross": 55, "gst": 5, "net": 50 },
+              "netEffect": 0
+            },
+            "manualJournalCashBasLinesIncluded": ["#5 (14 Nov 2026)", "#4 (1 Dec 2026)"]
+          }
+        }
+      },
+      {
+        "stepId": "EXT-06",
+        "name": "Negative Validation: Hard Lock Date Enforcement & Out-of-Balance Manual Journal",
+        "evidence": ["E37-PAGE"],
+        "input": {
+          "subTests": [
+            {
+              "subTestId": "EXT-06A",
+              "action": "POST_BALANCED_MJ_AFTER_HARD_LOCK",
+              "hardLockDate": "2026-10-31",
+              "userRole": "Administrator",
+              "journalDate": "2026-10-15",
+              "lines": [
+                { "accountCode": "469", "amount": 50.00 },
+                { "accountCode": "850", "amount": -50.00 }
+              ]
+            },
+            {
+              "subTestId": "EXT-06B",
+              "action": "POST_UNBALANCED_MJ",
+              "debitTotal": 50.00,
+              "creditTotal": 50.01
+            }
+          ]
+        },
+        "expected": {
+          "EXT-06A": {
+            "rejected": true,
+            "httpStatus": 400,
+            "apiErrorMessage": "The document date cannot be before the end of year lock date, currently set at 31-Oct-2026",
+            "uiAlertMessages": [
+              "There’s a problem with some of the details. Check and try again.",
+              "This journal date falls in a locked period for your organisation. Choose a different date or check your lock date settings."
+            ]
+          },
+          "EXT-06B": {
+            "rejected": true,
+            "uiAlertMessages": [
+              "Required fields are incomplete",
+              "Total debits (50.00) must equal total credits (50.01)"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

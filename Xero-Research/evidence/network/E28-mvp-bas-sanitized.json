@@ -1,0 +1,136 @@
+{
+  "evidenceId": "E28-NET",
+  "source": [
+    "GET https://go.xero.com/api/bas/statement?year=2026&month=12",
+    "GET https://go.xero.com/api/bas/gstReport/v2?fromDate=2026-10-01&toDate=2026-12-31&gstAccountingMethod=Accruals&maxJournalNumber=3&minJournalNumber=4294967295&unfiledAmountsIncluded=false"
+  ],
+  "capturedAt": "2026-11-14T21:41:09+08:00",
+  "module": "Tax / AU Activity Statements (Simpler BAS) - MVP 3-Scenario Verification",
+  "sanitized": true,
+  "redactions": [
+    "Removed Authorization Bearer JWT and Cookie/Set-Cookie headers",
+    "Replaced organisationId UUID with <ORG_UUID>",
+    "Replaced tenant shortcode with <SHORTCODE>"
+  ],
+  "statementResponse": {
+    "statement": {
+      "id": 0,
+      "settings": {
+        "id": "<BAS_SETTINGS_ID>",
+        "organisationId": "<ORG_UUID>",
+        "reportingType": "SimpleBas",
+        "gstCalculationPeriod": "GstQuarterly",
+        "gstAccountingMethod": "Accruals",
+        "paygIncomeTaxMethod": "MethodNone",
+        "paygWithholdingPeriod": "WithholdingNone",
+        "fuelTaxCredits": false,
+        "wineEqualisationTax": false,
+        "luxuryCarTax": false,
+        "fringeBenefitsTax": false,
+        "deferredGst": false,
+        "hasDraftStatement": false,
+        "settingsType": "User"
+      },
+      "isPublished": false,
+      "endDate": { "year": 2026, "month": 12, "day": 31 },
+      "gst": {
+        "maxJournalNumber": 3,
+        "minJournalNumber": 4294967295,
+        "totalSalesG1": 220,
+        "gstSales1A": 20,
+        "gstPurchases1B": 0,
+        "startDate": { "year": 2026, "month": 10, "day": 1 },
+        "adjustmentsOn1A": [],
+        "adjustmentsOn1B": [],
+        "gstSales1AJournalLine": 20,
+        "gstPurchases1BJournalLine": 0,
+        "exportSalesG2": 0,
+        "gstFreeSalesG3": 0,
+        "capitalPurchasesG10": 0,
+        "nonCapitalPurchasesG11": 0,
+        "includeUnfiledAmounts": false,
+        "unfiledAmountsExclusionReason": "SystemRules",
+        "adjustments": { "g1": [], "g2": [], "g3": [], "g10": [], "g11": [] },
+        "journalLineTotals": { "g1": 220, "g2": 0, "g3": 0, "g10": 0, "g11": 0 }
+      },
+      "totalOwedToAto8A": 20,
+      "totalOwedByAto8B": 0,
+      "paymentType": 0,
+      "paymentAmount9": 20,
+      "status": 0,
+      "userAction": {
+        "canDelete": false,
+        "canSaveAsDraft": true,
+        "canFinalise": true,
+        "canLodge": false,
+        "canRelodge": false,
+        "canFinaliseAndCreateInvoice": true
+      }
+    }
+  },
+  "gstReportV2Response": {
+    "report": {
+      "oneATotal": "20",
+      "oneBTotal": "0",
+      "g1Total": "220",
+      "transactions": [
+        {
+          "sequence": "19365295",
+          "journalDate": { "year": 2026, "month": 11, "day": 14 },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "INV-0001",
+          "details": "Acme Customer Pty Ltd - Consulting Service - MVP Scenario 1",
+          "grossAmount": { "whole": 110, "fraction": 0, "sign": "positive" },
+          "gstAmount": { "whole": 10, "fraction": 0, "sign": "positive" },
+          "netAmount": { "whole": 100, "fraction": 0, "sign": "positive" },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": ["1A", "G1"]
+        },
+        {
+          "sequence": "19365820",
+          "journalDate": { "year": 2026, "month": 11, "day": 14 },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "",
+          "details": "Walk-in Cash Customer - Cash Coding Direct Sale",
+          "grossAmount": { "whole": 110, "fraction": 0, "sign": "positive" },
+          "gstAmount": { "whole": 10, "fraction": 0, "sign": "positive" },
+          "netAmount": { "whole": 100, "fraction": 0, "sign": "positive" },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": ["1A", "G1"]
+        }
+      ],
+      "oneATotalAmounts": {
+        "totalGross": { "whole": 220, "fraction": 0, "sign": "positive" },
+        "totalGst": { "whole": 20, "fraction": 0, "sign": "positive" },
+        "totalNet": { "whole": 200, "fraction": 0, "sign": "positive" }
+      },
+      "oneBTotalAmounts": {
+        "totalGross": { "whole": 0, "fraction": 0, "sign": "positive" },
+        "totalGst": { "whole": 0, "fraction": 0, "sign": "positive" },
+        "totalNet": { "whole": 0, "fraction": 0, "sign": "positive" }
+      },
+      "g1TotalAmounts": {
+        "totalGross": { "whole": 220, "fraction": 0, "sign": "positive" },
+        "totalGst": { "whole": 20, "fraction": 0, "sign": "positive" },
+        "totalNet": { "whole": 200, "fraction": 0, "sign": "positive" }
+      },
+      "taxRateAmounts": [
+        {
+          "taxType": "OUTPUT",
+          "gstName": "GST on Income",
+          "isUnfiled": false,
+          "amounts": {
+            "totalGross": { "whole": 220, "fraction": 0, "sign": "positive" },
+            "totalGst": { "whole": 20, "fraction": 0, "sign": "positive" },
+            "totalNet": { "whole": 200, "fraction": 0, "sign": "positive" }
+          }
+        }
+      ]
+    },
+    "adjustments": []
+  }
+}

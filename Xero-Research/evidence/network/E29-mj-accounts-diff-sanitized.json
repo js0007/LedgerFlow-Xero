@@ -1,0 +1,585 @@
+{
+  "evidenceId": "E29-NET",
+  "source": "GET https://manual-journals-bff.xero.com/accounts/organisations/<ORG_UUID>",
+  "capturedAt": "2026-11-14T21:55:02+08:00",
+  "module": "Accounting / Manual Journals - Account Filtering Diff",
+  "sanitized": true,
+  "coaTotalExcludingBank": 54,
+  "manualJournalSelectableCount": 47,
+  "bankAccountAdded": "Business Operating Account (BANK) - also excluded",
+  "exactExcludedFromDefault54": [
+    {
+      "code": "497",
+      "name": "Bank Revaluations",
+      "type": "Expense",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "498",
+      "name": "Unrealised Currency Gains",
+      "type": "Expense",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "610",
+      "name": "Accounts Receivable",
+      "type": "Current Asset",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "630",
+      "name": "Inventory",
+      "type": "Inventory",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "800",
+      "name": "Accounts Payable",
+      "type": "Current Liability",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "801",
+      "name": "Unpaid Expense Claims",
+      "type": "Current Liability",
+      "defaultTaxRate": "BAS Excluded"
+    },
+    {
+      "code": "877",
+      "name": "Tracking Transfers",
+      "type": "Current Liability",
+      "defaultTaxRate": "BAS Excluded"
+    }
+  ],
+  "sampleReturnedIncludedSystemLikeAccounts": [
+    {
+      "code": "804",
+      "name": "Wages Payable - Payroll",
+      "class": "Liability",
+      "type": "CurrentLiability",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    },
+    {
+      "code": "820",
+      "name": "GST",
+      "class": "Liability",
+      "type": "CurrentLiability",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    },
+    {
+      "code": "840",
+      "name": "Historical Adjustment",
+      "class": "Liability",
+      "type": "CurrentLiability",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    },
+    {
+      "code": "850",
+      "name": "Suspense",
+      "class": "Liability",
+      "type": "CurrentLiability",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    },
+    {
+      "code": "860",
+      "name": "Rounding",
+      "class": "Liability",
+      "type": "CurrentLiability",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    },
+    {
+      "code": "960",
+      "name": "Retained Earnings",
+      "class": "Equity",
+      "type": "Equity",
+      "taxType": "BASEXCLUDED",
+      "status": "Active",
+      "accountValidationStatus": "Valid"
+    }
+  ],
+  "selectableAccounts": {
+    "value": [
+      {
+        "id": "d73520b1-bf54-4329-9a6d-918a842601b2",
+        "name": "Sales",
+        "code": "200",
+        "status": "Active",
+        "taxType": "OUTPUT",
+        "type": "Revenue",
+        "class": "Revenue",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "8e54774d-622c-4b17-9acb-f6157f7103d1",
+        "name": "Other Revenue",
+        "code": "260",
+        "status": "Active",
+        "taxType": "OUTPUT",
+        "type": "Revenue",
+        "class": "Revenue",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "54a2cb35-dc1a-40a7-aa70-0ee932c4cbb8",
+        "name": "Interest Income",
+        "code": "270",
+        "status": "Active",
+        "taxType": "EXEMPTOUTPUT",
+        "type": "Revenue",
+        "class": "Revenue",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "499729e4-37f8-4cb7-bb6d-c579cc1d00e1",
+        "name": "Cost of Goods Sold",
+        "code": "310",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "DirectCosts",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "49a9a8a8-ca9b-4a24-a485-382488854e24",
+        "name": "Advertising",
+        "code": "400",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "8bbd9d6b-0fb7-4e30-9ac0-5086761edd30",
+        "name": "Bank Fees",
+        "code": "404",
+        "status": "Active",
+        "taxType": "EXEMPTEXPENSES",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "835a25a0-593c-4074-8f06-38668cb89537",
+        "name": "Cleaning",
+        "code": "408",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "ab02eba5-8366-4655-a86e-e0196f396b50",
+        "name": "Consulting & Accounting",
+        "code": "412",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "62374962-76ba-4db3-91d7-e9344ca9cc12",
+        "name": "Depreciation",
+        "code": "416",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "bb43e061-4833-47cd-ac8b-b017d9d4f985",
+        "name": "Entertainment",
+        "code": "420",
+        "status": "Active",
+        "taxType": "EXEMPTEXPENSES",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "dac0e399-a734-48b5-91f4-fc9e1e298ede",
+        "name": "Freight & Courier",
+        "code": "425",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "c90e6823-4566-4409-b741-bad40244cfbb",
+        "name": "General Expenses",
+        "code": "429",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "5249f084-17c1-4182-9d86-a11e574ffcd9",
+        "name": "Insurance",
+        "code": "433",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "16ba25b0-c0d3-4936-9004-38dd8a0266ac",
+        "name": "Interest Expense",
+        "code": "437",
+        "status": "Active",
+        "taxType": "EXEMPTEXPENSES",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "11cd6d83-c363-45e8-b4d0-24037d93cd60",
+        "name": "Legal expenses",
+        "code": "441",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "7f7628d5-badd-4c19-8607-71bd32578618",
+        "name": "Light, Power, Heating",
+        "code": "445",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "4d750bf0-859d-4e4c-9661-37bced44ced7",
+        "name": "Motor Vehicle Expenses",
+        "code": "449",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "c0536679-4401-4f7e-b045-70b4db138e07",
+        "name": "Office Expenses",
+        "code": "453",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "88ffdd21-9595-49bb-9853-1c2444203dc0",
+        "name": "Printing & Stationery",
+        "code": "461",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "619d32e2-b9ab-4213-b6ec-3956b05591f4",
+        "name": "Rent",
+        "code": "469",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "2e0dc918-b387-4619-af3f-691f993a7760",
+        "name": "Repairs and Maintenance",
+        "code": "473",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "27750a66-c5b3-4341-abb5-ff28ce07b0ed",
+        "name": "Wages and Salaries",
+        "code": "477",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "8d06b4dd-8c57-4884-82fc-e5a4fabe9c34",
+        "name": "Superannuation",
+        "code": "478",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "81ef9381-ffc9-4cb1-804a-141494e081f9",
+        "name": "Subscriptions",
+        "code": "485",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "e0c0365f-c722-4050-9fa8-9c0c003bff56",
+        "name": "Telephone & Internet",
+        "code": "489",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "a2b5004b-2b4c-4277-b16e-304679ea20d9",
+        "name": "Travel - National",
+        "code": "493",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "42b6462d-dac4-409e-beff-a77d89a3e47b",
+        "name": "Travel - International",
+        "code": "494",
+        "status": "Active",
+        "taxType": "EXEMPTEXPENSES",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "411dd550-d159-471a-807a-c20524aa364b",
+        "name": "Realised Currency Gains",
+        "code": "499",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "689cfe8f-c3ca-44ec-bbd9-401852fef22a",
+        "name": "Income Tax Expense",
+        "code": "505",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Expense",
+        "class": "Expense",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "6fc37a0d-cbdc-4f2e-835e-3a879c6ec126",
+        "name": "Prepayments",
+        "code": "620",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Current",
+        "class": "Asset",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "6441a804-08d1-4c07-8768-8d212090be4f",
+        "name": "Office Equipment",
+        "code": "710",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Fixed",
+        "class": "Asset",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "f27bbaaf-d2e0-46ba-b5ea-decca1ae8db2",
+        "name": "Less Accumulated Depreciation on Office Equipment",
+        "code": "711",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Fixed",
+        "class": "Asset",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "ca32d7ff-ca6d-4a5a-92f5-c8c8687df0c4",
+        "name": "Computer Equipment",
+        "code": "720",
+        "status": "Active",
+        "taxType": "INPUT",
+        "type": "Fixed",
+        "class": "Asset",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "64ab033b-d80d-4942-affc-506bbc7a6d8d",
+        "name": "Less Accumulated Depreciation on Computer Equipment",
+        "code": "721",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Fixed",
+        "class": "Asset",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "7db51244-08c4-4490-8d62-402b9918bd34",
+        "name": "Wages Payable - Payroll",
+        "code": "804",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "7a59fde1-6a4d-472d-b88d-4a2243f9434d",
+        "name": "GST",
+        "code": "820",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "70843b5e-2145-43dc-bed8-511154805a37",
+        "name": "PAYG Withholdings Payable",
+        "code": "825",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "03ce50d8-b905-4b1e-b29b-4a158f047f97",
+        "name": "Superannuation Payable",
+        "code": "826",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "c345d308-d893-4b00-bc5d-d12afd431e3d",
+        "name": "Income Tax Payable",
+        "code": "830",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "2568f5e4-fced-4103-b0d1-db97e9358669",
+        "name": "Historical Adjustment",
+        "code": "840",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "9a545cf2-7996-4bae-bd65-cbbed3557af2",
+        "name": "Suspense",
+        "code": "850",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "8c3e4ce4-19e6-45ff-bda7-936b1c22be43",
+        "name": "Rounding",
+        "code": "860",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "983e503f-779a-4812-9553-1e9f85db559f",
+        "name": "Owner A Drawings",
+        "code": "880",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "2f8f2dd4-813e-4ea9-89b0-694e40a136d2",
+        "name": "Owner A Funds Introduced",
+        "code": "881",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "CurrentLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "ac8d966a-083b-47b3-9df8-aa8eea08c258",
+        "name": "Loan",
+        "code": "900",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "TermLiability",
+        "class": "Liability",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "2f70a344-e608-477a-a1f2-5c291bbe1ff3",
+        "name": "Retained Earnings",
+        "code": "960",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Equity",
+        "class": "Equity",
+        "accountValidationStatus": "Valid"
+      },
+      {
+        "id": "abddea46-df83-4de2-92f3-ef2d8c8b5da8",
+        "name": "Owner A Share Capital",
+        "code": "970",
+        "status": "Active",
+        "taxType": "BASEXCLUDED",
+        "type": "Equity",
+        "class": "Equity",
+        "accountValidationStatus": "Valid"
+      }
+    ],
+    "Count": 47
+  }
+}

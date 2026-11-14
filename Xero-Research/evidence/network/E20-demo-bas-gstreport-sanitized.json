@@ -1,0 +1,758 @@
+{
+    "_meta":  {
+                  "capturedSampleCount":  21,
+                  "taxTypesObserved":  [
+                                           "INPUT",
+                                           "OUTPUT",
+                                           "BASEXCLUDED",
+                                           "EXEMPTEXPENSES"
+                                       ],
+                  "source":  "GET https://go.xero.com/api/bas/gstReport/v2 (Demo Company AU, Oct-Dec 2026, Accruals)",
+                  "note":  "Sanitized schema and prefix transaction sample (21 transactions captured before MCP output truncation); auth/cookies stripped"
+              },
+    "oneATotal":  "3730",
+    "oneBTotal":  "2320",
+    "g1Total":  "41039",
+    "sampleTransactions":  [
+                               {
+                                   "sequence":  "722998103",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  13,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Printing \u0026 Stationery",
+                                   "accountCode":  "461",
+                                   "reference":  "Cr",
+                                   "details":  "Dick Smith",
+                                   "grossAmount":  {
+                                                       "whole":  39,
+                                                       "fraction":  50,
+                                                       "sign":  "negative"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  3,
+                                                     "fraction":  59,
+                                                     "sign":  "negative"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  35,
+                                                     "fraction":  91,
+                                                     "sign":  "negative"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997512",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  14,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Sales",
+                                   "accountCode":  "200",
+                                   "reference":  "ORC1024",
+                                   "details":  "Carruthers \u0026 Smale",
+                                   "grossAmount":  {
+                                                       "whole":  550,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  50,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  500,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Income",
+                                   "taxType":  "OUTPUT",
+                                   "basFieldNames":  [
+                                                         "1A",
+                                                         "G1"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722998114",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  13,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Consulting \u0026 Accounting",
+                                   "accountCode":  "412",
+                                   "reference":  "",
+                                   "details":  "Xero",
+                                   "grossAmount":  {
+                                                       "whole":  53,
+                                                       "fraction":  90,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  4,
+                                                     "fraction":  90,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  49,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722998071",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  12,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Printing \u0026 Stationery",
+                                   "accountCode":  "461",
+                                   "reference":  "",
+                                   "details":  "Dick Smith",
+                                   "grossAmount":  {
+                                                       "whole":  39,
+                                                       "fraction":  50,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  3,
+                                                     "fraction":  59,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  35,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997793",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  2,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722998122",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  13,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Purchases",
+                                   "accountCode":  "300",
+                                   "reference":  "GB1-White",
+                                   "details":  "Bayside Wholesale - Golf balls - white single",
+                                   "grossAmount":  {
+                                                       "whole":  840,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  76,
+                                                     "fraction":  36,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  763,
+                                                     "fraction":  64,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997481",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  11,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Wages and Salaries",
+                                   "accountCode":  "477",
+                                   "reference":  "Wages",
+                                   "details":  "Odette Garrison",
+                                   "grossAmount":  {
+                                                       "whole":  2500,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  2500,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "BAS Excluded",
+                                   "taxType":  "BASEXCLUDED"
+                               },
+                               {
+                                   "sequence":  "722997482",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  11,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "PAYG Withholdings Payable",
+                                   "accountCode":  "825",
+                                   "reference":  "Wages",
+                                   "details":  "Odette Garrison",
+                                   "grossAmount":  {
+                                                       "whole":  562,
+                                                       "fraction":  0,
+                                                       "sign":  "negative"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  562,
+                                                     "fraction":  0,
+                                                     "sign":  "negative"
+                                                 },
+                                   "gstName":  "BAS Excluded",
+                                   "taxType":  "BASEXCLUDED"
+                               },
+                               {
+                                   "sequence":  "722997484",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  11,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Wages and Salaries",
+                                   "accountCode":  "477",
+                                   "reference":  "Wages",
+                                   "details":  "Oliver Gray",
+                                   "grossAmount":  {
+                                                       "whole":  2400,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  2400,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "BAS Excluded",
+                                   "taxType":  "BASEXCLUDED"
+                               },
+                               {
+                                   "sequence":  "722997485",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  11,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "PAYG Withholdings Payable",
+                                   "accountCode":  "825",
+                                   "reference":  "Wages",
+                                   "details":  "Oliver Gray",
+                                   "grossAmount":  {
+                                                       "whole":  540,
+                                                       "fraction":  0,
+                                                       "sign":  "negative"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  540,
+                                                     "fraction":  0,
+                                                     "sign":  "negative"
+                                                 },
+                                   "gstName":  "BAS Excluded",
+                                   "taxType":  "BASEXCLUDED"
+                               },
+                               {
+                                   "sequence":  "722997787",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  1,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Cleaning",
+                                   "accountCode":  "408",
+                                   "reference":  "M000463",
+                                   "details":  "MCO Cleaning Services - Office Cleaning - daily rate",
+                                   "grossAmount":  {
+                                                       "whole":  220,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  20,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  200,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997898",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  6,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997667",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  17,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Entertainment",
+                                   "accountCode":  "420",
+                                   "reference":  "",
+                                   "details":  "Party Hire",
+                                   "grossAmount":  {
+                                                       "whole":  200,
+                                                       "fraction":  0,
+                                                       "sign":  "negative"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  200,
+                                                     "fraction":  0,
+                                                     "sign":  "negative"
+                                                 },
+                                   "gstName":  "GST Free Expenses",
+                                   "taxType":  "EXEMPTEXPENSES",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997724",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  25,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997738",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  29,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Sales",
+                                   "accountCode":  "200",
+                                   "reference":  "Portal proj",
+                                   "details":  "DIISR - Small Business Services",
+                                   "grossAmount":  {
+                                                       "whole":  3850,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  350,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  3500,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Income",
+                                   "taxType":  "OUTPUT",
+                                   "basFieldNames":  [
+                                                         "1A",
+                                                         "G1"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722998124",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  13,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Sales",
+                                   "accountCode":  "200",
+                                   "reference":  "ORC1032",
+                                   "details":  "Cube Land",
+                                   "grossAmount":  {
+                                                       "whole":  495,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  45,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  450,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Income",
+                                   "taxType":  "OUTPUT",
+                                   "basFieldNames":  [
+                                                         "1A",
+                                                         "G1"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997743",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  29,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Rent",
+                                   "accountCode":  "469",
+                                   "reference":  "RENT",
+                                   "details":  "Truxton Property Management - Monthly rent in advance",
+                                   "grossAmount":  {
+                                                       "whole":  1181,
+                                                       "fraction":  25,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  107,
+                                                     "fraction":  39,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  1073,
+                                                     "fraction":  86,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997665",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  16,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997676",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  10,
+                                                       "day":  18,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722998009",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  10,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Travel - National",
+                                   "accountCode":  "493",
+                                   "reference":  "",
+                                   "details":  "Passing Places Parking",
+                                   "grossAmount":  {
+                                                       "whole":  12,
+                                                       "fraction":  0,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  1,
+                                                     "fraction":  9,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  10,
+                                                     "fraction":  91,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               },
+                               {
+                                   "sequence":  "722997874",
+                                   "journalDate":  {
+                                                       "year":  2026,
+                                                       "month":  11,
+                                                       "day":  3,
+                                                       "hour":  0,
+                                                       "minute":  0,
+                                                       "second":  0
+                                                   },
+                                   "accountName":  "Office Expenses",
+                                   "accountCode":  "453",
+                                   "reference":  "",
+                                   "details":  "7-Eleven - Misc corner store",
+                                   "grossAmount":  {
+                                                       "whole":  5,
+                                                       "fraction":  50,
+                                                       "sign":  "positive"
+                                                   },
+                                   "gstAmount":  {
+                                                     "whole":  0,
+                                                     "fraction":  50,
+                                                     "sign":  "positive"
+                                                 },
+                                   "netAmount":  {
+                                                     "whole":  5,
+                                                     "fraction":  0,
+                                                     "sign":  "positive"
+                                                 },
+                                   "gstName":  "GST on Expenses",
+                                   "taxType":  "INPUT",
+                                   "basFieldNames":  [
+                                                         "1B",
+                                                         "G11"
+                                                     ]
+                               }
+                           ]
+}

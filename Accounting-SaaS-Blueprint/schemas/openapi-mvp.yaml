@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: AU Accounting SaaS API (Python + Flask + SQLite)
+  version: 2.0.0
+  description: >
+    High-fidelity AU Accounting SaaS RESTful Contract aligned after full-site Xero exploration
+    and Phase 1 Audit. All monetary fields are serialized as exact decimal strings (e.g. "110.00").
+servers:
+  - url: http://localhost:5000/api/v1
+
+paths:
+  /auth/me:
+    get: { summary: "Current user session and active org memberships & roles" }
+  /auth/switch-role:
+    post: { summary: "Switch active testing/demo role (ADVISER | STANDARD | READONLY)" }
+
+  /orgs:
+    get: { summary: "List organisations accessible to current user" }
+    post: { summary: "Create organisation & seed AU 54 COA + 11 TaxRates + Settings + Optional Sample Data" }
+
+  /orgs/{orgId}/dashboard:
+    get: { summary: "Homepage Twin Balances, AR/AP summary charts, Tasks & Setup Progress" }
+
+  /orgs/{orgId}/settings/organisation:
+    get: { summary: "Get organisation details (ABN, name, address, invoice sequence defaults)" }
+    patch: { summary: "Update organisation details" }
+  /orgs/{orgId}/settings/financial:
+    get: { summary: "Get FY End, BAS accounting method, G1 mode, Tax defaults, Soft/Hard Lock Dates" }
+    patch: { summary: "Update financial settings & Lock Dates (Adviser only for lock dates)" }
+
+  /orgs/{orgId}/conversion-balances:
+    get: { summary: "Get conversion balance lines, totals & 840 Historical Adjustment diff" }
+    put: { summary: "Save conversion balances draft" }
+  /orgs/{orgId}/conversion-balances/post:
+    post: { summary: "Validate historical AR/AP parity and post CONVERSION immutable journal" }
+
+  /orgs/{orgId}/accounts:
+    get: { summary: "List Chart of Accounts (?excludeManualExcluded=true returns 47 MJ-eligible accounts)" }
+    post: { summary: "Create standard account or bank account" }
+  /orgs/{orgId}/accounts/{accountId}:
+    patch: { summary: "Update or archive account (blocked if system locked)" }
+    delete: { summary: "Delete unused non-system account" }
+
+  /orgs/{orgId}/tax-rates:
+    get: { summary: "List AU 11 TaxRates (6 Active + 5 Archived) with canApplyTo* & BAS field map" }
+  /orgs/{orgId}/tracking-categories:
+    get: { summary: "List active/archived tracking categories (max 2 active) and options" }
+    post: { summary: "Create tracking category or option" }
+  /orgs/{orgId}/products:
+    get: { summary: "List Products & Services catalog (Untracked & Tracked preview SKUs)" }
+    post: { summary: "Create product/service SKU" }
+
+  /orgs/{orgId}/contacts:
+    get: { summary: "List unified contacts with live youOwe/theyOwe balances" }
+    post: { summary: "Create contact with default sales/purchase accounts & tax rates" }
+  /orgs/{orgId}/contacts/{contactId}:
+    get: { summary: "Get contact profile + transaction ledger" }
+    patch: { summary: "Update or archive contact" }
+
+  /orgs/{orgId}/quotes:
+    get: { summary: "List quotes (DRAFT/SENT/DECLINED/ACCEPTED/INVOICED/EXPIRED)" }
+    post: { summary: "Create quote (zero GL effect)" }
+  /orgs/{orgId}/quotes/{quoteId}/convert:
+    post: { summary: "Convert accepted quote to DRAFT/AUTHORISED Sales Invoice" }
+
+  /orgs/{orgId}/purchase-orders:
+    get: { summary: "List purchase orders (DRAFT/AWAITING_APPROVAL/APPROVED/BILLED)" }
+    post: { summary: "Create purchase order (zero GL effect)" }
+  /orgs/{orgId}/purchase-orders/{poId}/convert:
+    post: { summary: "Copy approved PO to Purchase Bill" }
+
+  /orgs/{orgId}/invoices:
+    get: { summary: "List Sales Invoices (ACCREC), Bills (ACCPAY), and Credit Notes (ACCRECCREDIT/ACCPAYCREDIT)" }
+    post: { summary: "Create Draft or Approve immediately with server-authoritative line GST rounding" }
+  /orgs/{orgId}/invoices/{invoiceId}:
+    get: { summary: "Get document details, lines, payments & credit note allocations" }
+    patch: { summary: "Edit Draft document lines" }
+  /orgs/{orgId}/invoices/{invoiceId}/approve:
+    post: { summary: "Transition Draft/Submitted -> Authorised and post immutable GL journal" }
+  /orgs/{orgId}/invoices/{invoiceId}/void:
+    post: { summary: "Void unpaid document with append-only reversal journal" }
+  /orgs/{orgId}/invoices/{invoiceId}/allocate:
+    post: { summary: "Allocate Credit Note against target Invoices/Bills (triggers Cash BAS date)" }
+
+  /orgs/{orgId}/payments:
+    post: { summary: "Record payment against Invoice/Bill (full or partial)" }
+  /orgs/{orgId}/payments/{paymentId}:
+    delete: { summary: "Delete payment by posting reversal journal & reopening invoice balance" }
+
+  /orgs/{orgId}/bank-accounts:
+    get: { summary: "List bank accounts with Twin Balances (statementBalance vs bookBalance + difference)" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/statement-lines/import:
+    post: { summary: "Import CSV bank statement lines (deduped via occurrence_idx import_hash)" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/suggestions:
+    get: { summary: "Get unreconciled lines, open invoice/bill matches, bank rule hits & transfer matches" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/reconcile:
+    post: { summary: "Atomically MATCH_INVOICE (incl. split + minor adjustment), CREATE_BANK_TX, or TRANSFER" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/cash-coding/apply:
+    post: { summary: "Batch Save & Reconcile multiple Cash Coding lines in one transaction" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/unreconcile:
+    post: { summary: "Unlink statement line back to UNRECONCILED while keeping underlying BankTx/Payment" }
+  /orgs/{orgId}/bank-accounts/{bankAccountId}/remove-redo:
+    post: { summary: "Reverse posted BankTx/Payment with reversal journal and reopen statement line" }
+  /orgs/{orgId}/bank-rules:
+    get: { summary: "List ordered Spend/Receive/Transfer Bank Rules" }
+    post: { summary: "Create Bank Rule (ANY/ALL conditions + fixed + 100% percent lines)" }
+  /orgs/{orgId}/bank-rules/{ruleId}:
+    put: { summary: "Update Bank Rule" }
+    delete: { summary: "Archive/Delete Bank Rule" }
+
+  /orgs/{orgId}/manual-journals:
+    get: { summary: "List manual journals by status (DRAFT/POSTED/VOIDED/ARCHIVED)" }
+    post: { summary: "Create Draft or Post balanced Manual Journal (47 accounts whitelist + lock guard)" }
+  /orgs/{orgId}/manual-journals/{mjId}:
+    get: { summary: "Get manual journal details" }
+    patch: { summary: "Edit Draft or Posted manual journal (Posted edits append reversal + new journal)" }
+  /orgs/{orgId}/manual-journals/{mjId}/post:
+    post: { summary: "Post draft manual journal (+ sync auto-reversing journal if set)" }
+  /orgs/{orgId}/manual-journals/{mjId}/void:
+    post: { summary: "Void posted manual journal via append-only reversal journal" }
+
+  /orgs/{orgId}/find-and-recode:
+    get: { summary: "Search journal lines by account/tax/date/contact (Adviser only)" }
+    post: { summary: "Recode selected transactions via reversal+repost and write audit batch" }
+
+  /orgs/{orgId}/reports/trial-balance:
+    get: { summary: "Dynamic Trial Balance as at ?date=YYYY-MM-DD (FY earnings rollup)" }
+  /orgs/{orgId}/reports/profit-and-loss:
+    get: { summary: "Profit & Loss for ?from=&to=&basis=ACCRUAL|CASH&trackingOptionId=" }
+  /orgs/{orgId}/reports/balance-sheet:
+    get: { summary: "Balance Sheet (Virtual Year-End Close + negative Bank overdraft to Current Liabilities)" }
+  /orgs/{orgId}/reports/journals:
+    get: { summary: "Append-only Journal Report ordered by journalNumber" }
+  /orgs/{orgId}/reports/account-transactions:
+    get: { summary: "Drill-down ledger transactions per account" }
+  /orgs/{orgId}/reports/general-ledger:
+    get: { summary: "General Ledger Detail across accounts" }
+  /orgs/{orgId}/reports/aged-receivables:
+    get: { summary: "Aged Receivables Summary & Detail (Current, <1M, 1M, 2M, 3M, Older)" }
+  /orgs/{orgId}/reports/aged-payables:
+    get: { summary: "Aged Payables Summary & Detail" }
+  /orgs/{orgId}/analytics/cash-flow:
+    get: { summary: "Short-term 30-day Cash Flow Projection (Bank + Due AR - Due AP)" }
+
+  /orgs/{orgId}/bas/statement:
+    get: { summary: "Compute live or load finalised AU Simpler BAS + Unfiled watermark delta" }
+  /orgs/{orgId}/bas/history:
+    get: { summary: "List drafted and finalised BAS statements" }
+  /orgs/{orgId}/bas/statement/finalise:
+    post: { summary: "Freeze maxJournalNumber watermark and mark BAS FINALISED" }
+
+  /orgs/{orgId}/audit-logs:
+    get: { summary: "Immutable History & Notes audit stream" }
+  /orgs/{orgId}/assurance:
+    get: { summary: "Assurance anomalies (manual bank lines, duplicate contact bank accounts, voided/backdated bills)" }
+  /orgs/{orgId}/connected-apps:
+    get: { summary: "List connected external integrations / ATO / Stripe / Feeds boundary status" }
+    post: { summary: "Connect or disconnect sample marketplace app" }

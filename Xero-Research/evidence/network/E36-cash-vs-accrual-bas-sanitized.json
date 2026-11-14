@@ -1,0 +1,531 @@
+{
+  "_sanitized": true,
+  "period": "2026-10-01 to 2026-12-31",
+  "accruals_summary": {
+    "settings": {
+      "gstAccountingMethod": "Accruals",
+      "gstCalculationPeriod": "GstQuarterly",
+      "reportingType": "SimpleBas"
+    },
+    "gst": {
+      "totalSalesG1": 275,
+      "gstSales1A": 25,
+      "gstPurchases1B": 10,
+      "exportSalesG2": 0,
+      "gstFreeSalesG3": 0,
+      "capitalPurchasesG10": 0,
+      "nonCapitalPurchasesG11": 110,
+      "maxJournalNumber": 10
+    },
+    "totalOwedToAto8A": 25,
+    "totalOwedByAto8B": 10,
+    "paymentAmount9": 15
+  },
+  "cash_summary": {
+    "settings": {
+      "gstAccountingMethod": "Cash",
+      "gstCalculationPeriod": "GstQuarterly",
+      "reportingType": "SimpleBas"
+    },
+    "gst": {
+      "totalSalesG1": 275,
+      "gstSales1A": 25,
+      "gstPurchases1B": 0,
+      "exportSalesG2": 0,
+      "gstFreeSalesG3": 0,
+      "capitalPurchasesG10": 0,
+      "nonCapitalPurchasesG11": 0,
+      "maxJournalNumber": 10
+    },
+    "totalOwedToAto8A": 25,
+    "totalOwedByAto8B": 0,
+    "paymentAmount9": 25
+  },
+  "cash_gst_report_v2": {
+    "report": {
+      "oneATotal": "25",
+      "oneBTotal": "0",
+      "g1Total": "275",
+      "transactions": [
+        {
+          "sequence": "19365496",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "INV-0001",
+          "details": "Payment: Acme Customer Pty Ltd",
+          "grossAmount": {
+            "whole": 110,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 10,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": [
+            "1A",
+            "G1"
+          ]
+        },
+        {
+          "sequence": "19366629",
+          "journalDate": {
+            "year": 2026,
+            "month": 12,
+            "day": 1,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Rent",
+          "accountCode": "469",
+          "reference": "#4",
+          "details": "Reversal: Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+          "grossAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstAmount": {
+            "whole": 0,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstName": "BAS Excluded",
+          "taxType": "BASEXCLUDED"
+        },
+        {
+          "sequence": "19366630",
+          "journalDate": {
+            "year": 2026,
+            "month": 12,
+            "day": 1,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Suspense",
+          "accountCode": "850",
+          "reference": "#4",
+          "details": "Reversal: Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+          "grossAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 0,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "BAS Excluded",
+          "taxType": "BASEXCLUDED"
+        },
+        {
+          "sequence": "19365820",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "",
+          "details": "Walk-in Cash Customer - Cash Coding Direct Sale",
+          "grossAmount": {
+            "whole": 110,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 10,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": [
+            "1A",
+            "G1"
+          ]
+        },
+        {
+          "sequence": "19366973",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "PART-PAY-55",
+          "details": "Payment: Acme Customer Pty Ltd",
+          "grossAmount": {
+            "whole": 55,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 5,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 50,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": [
+            "1A",
+            "G1"
+          ]
+        },
+        {
+          "sequence": "19366631",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Rent",
+          "accountCode": "469",
+          "reference": "#5",
+          "details": "Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+          "grossAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 0,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "BAS Excluded",
+          "taxType": "BASEXCLUDED"
+        },
+        {
+          "sequence": "19366632",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Suspense",
+          "accountCode": "850",
+          "reference": "#5",
+          "details": "Prepaid Rent Accrual Adjustment (Auto-Reverse Test)",
+          "grossAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstAmount": {
+            "whole": 0,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 100,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstName": "BAS Excluded",
+          "taxType": "BASEXCLUDED"
+        },
+        {
+          "sequence": "19367098",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "CREDIT-INV-0002",
+          "details": "Acme Customer Pty Ltd",
+          "grossAmount": {
+            "whole": 55,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstAmount": {
+            "whole": 5,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "netAmount": {
+            "whole": 50,
+            "fraction": 0,
+            "sign": "negative"
+          },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": [
+            "1A",
+            "G1"
+          ]
+        },
+        {
+          "sequence": "19367103",
+          "journalDate": {
+            "year": 2026,
+            "month": 11,
+            "day": 14,
+            "hour": 0,
+            "minute": 0,
+            "second": 0
+          },
+          "accountName": "Sales",
+          "accountCode": "200",
+          "reference": "EXT-CREDIT-TEST",
+          "details": "Acme Customer Pty Ltd",
+          "grossAmount": {
+            "whole": 55,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstAmount": {
+            "whole": 5,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "netAmount": {
+            "whole": 50,
+            "fraction": 0,
+            "sign": "positive"
+          },
+          "gstName": "GST on Income",
+          "taxType": "OUTPUT",
+          "basFieldNames": [
+            "1A",
+            "G1"
+          ]
+        }
+      ],
+      "g2Total": "0",
+      "g3Total": "0",
+      "g10Total": "0",
+      "g11Total": "0",
+      "oneATotalAmounts": {
+        "totalGross": {
+          "whole": 275,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 25,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 250,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "oneBTotalAmounts": {
+        "totalGross": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "g1TotalAmounts": {
+        "totalGross": {
+          "whole": 275,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 25,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 250,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "g2TotalAmounts": {
+        "totalGross": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "g3TotalAmounts": {
+        "totalGross": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "g10TotalAmounts": {
+        "totalGross": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "g11TotalAmounts": {
+        "totalGross": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalGst": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        },
+        "totalNet": {
+          "whole": 0,
+          "fraction": 0,
+          "sign": "positive"
+        }
+      },
+      "taxRateAmounts": [
+        {
+          "taxType": "OUTPUT",
+          "gstName": "GST on Income",
+          "isUnfiled": false,
+          "amounts": {
+            "totalGross": {
+              "whole": 275,
+              "fraction": 0,
+              "sign": "positive"
+            },
+            "totalGst": {
+              "whole": 25,
+              "fraction": 0,
+              "sign": "positive"
+            },
+            "totalNet": {
+              "whole": 250,
+              "fraction": 0,
+              "sign": "positive"
+            }
+          }
+        },
+        {
+          "taxType": "BASEXCLUDED",
+          "gstName": "BAS Excluded",
+          "isUnfiled": false,
+          "amounts": {
+            "totalGross": {
+              "whole": 0,
+              "fraction": 0,
+              "sign": "positive"
+            },
+            "totalGst": {
+              "whole": 0,
+              "fraction": 0,
+              "sign": "positive"
+            },
+            "totalNet": {
+              "whole": 0,
+              "fraction": 0,
+              "sign": "positive"
+            }
+          }
+        }
+      ]
+    },
+    "adjustments": []
+  }
+}

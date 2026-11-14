@@ -1,0 +1,194 @@
+{
+  "evidenceId": "E06-NET",
+  "source": "https://go.xero.com/app/<SHORTCODE>/journals",
+  "capturedAt": "2026-11-14T21:10:51+08:00",
+  "module": "Accounting / Manual Journals & Tax Rates",
+  "sanitized": true,
+  "redactions": [
+    "Removed Authorization Bearer JWT header",
+    "Removed Set-Cookie headers",
+    "Replaced organisation UUID with <ORG_UUID>",
+    "Replaced shortcode with <SHORTCODE>"
+  ],
+  "observedHeadersContract": {
+    "requiredClientHeaders": [
+      "authorization: Bearer <JWT>",
+      "xero-tenant-id: <ORG_UUID>",
+      "xero-tenant-shortcode: <SHORTCODE>",
+      "xero-shell-app-name: Manual Journals UI",
+      "xero-correlation-id: <CORRELATION_UUID>",
+      "x-client: xero-secure-fetch"
+    ]
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "url": "https://manual-journals-bff.xero.com/organisation-settings/organisations/<ORG_UUID>",
+      "status": 200,
+      "responseBody": {
+        "countryCode": "AU"
+      }
+    },
+    {
+      "method": "GET",
+      "url": "https://manual-journals-bff.xero.com/taxrates/organisations/<ORG_UUID>",
+      "status": 200,
+      "responseBody": [
+        {
+          "name": "BAS Excluded",
+          "taxType": "BASEXCLUDED",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "a1419002-ba3e-4b4c-8f04-16c2eebe8509"}],
+          "reportTaxType": "None",
+          "status": "Active",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": true,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST Free Capital",
+          "taxType": "EXEMPTCAPITAL",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "c82d2ce4-9aaf-4a57-8137-79fd7df4bbab"}],
+          "reportTaxType": "None",
+          "status": "Archived",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST Free Expenses",
+          "taxType": "EXEMPTEXPENSES",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "ad6ee011-8590-47a5-9d10-299817faacef"}],
+          "reportTaxType": "None",
+          "status": "Active",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST Free Exports",
+          "taxType": "EXEMPTEXPORT",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "30a98867-a238-4ba0-9436-958cbcf87979"}],
+          "reportTaxType": "None",
+          "status": "Archived",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": false,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": true,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST Free Income",
+          "taxType": "EXEMPTOUTPUT",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "895cd076-5911-48d9-a92c-da66043982d9"}],
+          "reportTaxType": "None",
+          "status": "Active",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": false,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": true,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST on Capital",
+          "taxType": "CAPEXINPUT",
+          "taxComponents": [{"name": "GST", "rate": 10.0, "isCompound": false, "id": "1015e06b-c814-4f3e-9744-51bb469d470b"}],
+          "reportTaxType": "None",
+          "status": "Archived",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 10.0,
+          "effectiveRate": 10.0
+        },
+        {
+          "name": "GST on Capital Imports",
+          "taxType": "GSTONCAPIMPORTS",
+          "taxComponents": [{"name": "Capital Imports GST", "rate": 0, "isCompound": false, "id": "c9cacbfb-caf7-40c8-88c4-efb5244b0c28"}],
+          "reportTaxType": "None",
+          "status": "Archived",
+          "canApplyToAssets": false,
+          "canApplyToEquity": false,
+          "canApplyToExpenses": false,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST on Expenses",
+          "taxType": "INPUT",
+          "taxComponents": [{"name": "GST", "rate": 10.0, "isCompound": false, "id": "b7f1c306-af1e-4998-aa3b-e375f4cf5f67"}],
+          "reportTaxType": "Input",
+          "status": "Active",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 10.0,
+          "effectiveRate": 10.0
+        },
+        {
+          "name": "GST on Imports",
+          "taxType": "GSTONIMPORTS",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "17cf70c3-d012-48b5-b35c-4bbfd5258688"}],
+          "reportTaxType": "GSTOnImports",
+          "status": "Active",
+          "canApplyToAssets": false,
+          "canApplyToEquity": false,
+          "canApplyToExpenses": false,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": false,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        },
+        {
+          "name": "GST on Income",
+          "taxType": "OUTPUT",
+          "taxComponents": [{"name": "GST", "rate": 10.0, "isCompound": false, "id": "e0861812-c2cd-42bf-8fba-3a1ad654c1c0"}],
+          "reportTaxType": "Output",
+          "status": "Active",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": false,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": true,
+          "displayTaxRate": 10.0,
+          "effectiveRate": 10.0
+        },
+        {
+          "name": "Input Taxed",
+          "taxType": "INPUTTAXED",
+          "taxComponents": [{"name": "GST", "rate": 0, "isCompound": false, "id": "bc2ddd68-97b9-43e6-be28-aded3c062dbc"}],
+          "reportTaxType": "None",
+          "status": "Archived",
+          "canApplyToAssets": true,
+          "canApplyToEquity": true,
+          "canApplyToExpenses": true,
+          "canApplyToLiabilities": true,
+          "canApplyToRevenue": true,
+          "displayTaxRate": 0,
+          "effectiveRate": 0
+        }
+      ]
+    }
+  ]
+}
