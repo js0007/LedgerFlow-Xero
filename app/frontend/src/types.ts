@@ -154,6 +154,7 @@ export interface InvoiceDocument {
   amountCredited: string;
   amountDue: string;
   postedJournalNumber: number | null;
+  version?: number;
   lines: CommercialLine[];
   payments: { id: string; bankAccountName: string; paymentDate: string; amount: string; reference: string | null; isReconciled: boolean; journalNumber: number }[];
   allocations: { id: string; creditNoteNumber: string; targetInvoiceNumber: string; allocationDate: string; amount: string }[];

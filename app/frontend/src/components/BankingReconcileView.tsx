@@ -33,8 +33,18 @@ interface StatementSuggestionLine {
   chequeNumber: string | null;
   discussNote: string | null;
   version: number;
-  suggestionType: "NONE" | "MATCH_EXISTING_PAYMENT" | "MATCH_INVOICE" | "BANK_RULE";
+  suggestionType: "NONE" | "MATCH_EXISTING_PAYMENT" | "MATCH_EXISTING_TRANSFER" | "MATCH_INVOICE" | "BANK_RULE";
   matchedPayment: { paymentId: string; amount: string; reference?: string | null; invoiceNumber?: string } | null;
+  matchedTransfer?: {
+    bankTxId: string;
+    fromBankAccountId: string;
+    fromBankName: string;
+    toBankAccountId: string;
+    toBankName: string;
+    txDate: string;
+    amount: string;
+    reference?: string | null;
+  } | null;
   matchedDocument: { invoiceId: string; invoiceNumber: string; contactName: string; amountDue: string } | null;
   matchedRule: {
     ruleId: string;
@@ -269,6 +279,13 @@ export function BankingReconcileView({
           version: line.version,
           action: "MATCH_EXISTING_PAYMENT",
           paymentId: line.matchedPayment.paymentId,
+        });
+      } else if (line.suggestionType === "MATCH_EXISTING_TRANSFER" && line.matchedTransfer) {
+        await api.post(`/orgs/${orgId}/bank-accounts/${activeBank.id}/reconcile`, {
+          statementLineId: line.id,
+          version: line.version,
+          action: "MATCH_TRANSFER",
+          matchedBankTransactionId: line.matchedTransfer.bankTxId,
         });
       } else if (line.suggestionType === "MATCH_INVOICE" && line.matchedDocument) {
         await api.post(`/orgs/${orgId}/bank-accounts/${activeBank.id}/reconcile`, {
@@ -592,9 +609,32 @@ export function BankingReconcileView({
                     </td>
                     <td>
                       {canWrite && (
-                        <button className="x-btn x-btn-danger x-btn-sm" onClick={() => handleDeleteRule(r.id)}>
-                          <Trash2 size={13} /> Delete
-                        </button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            className="x-btn x-btn-sm"
+                            onClick={() => {
+                              setRuleForm({
+                                id: r.id,
+                                name: r.name,
+                                ruleType: r.ruleType,
+                                matchStrategy: r.matchStrategy,
+                                field: r.conditions[0]?.field || "PAYEE",
+                                operator: r.conditions[0]?.operator || "CONTAINS",
+                                value: r.conditions[0]?.value || "",
+                                contactId: r.contactId || "",
+                                accountId: r.percentLines[0]?.accountId || defaultExpenseAcc?.id || "",
+                                taxRateId: r.percentLines[0]?.taxRateId || defaultGstTax?.id || "",
+                                description: r.percentLines[0]?.description || "",
+                              });
+                              setRuleModalOpen(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button className="x-btn x-btn-danger x-btn-sm" onClick={() => handleDeleteRule(r.id)}>
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -690,7 +730,7 @@ export function BankingReconcileView({
                         <div style={{ fontSize: 19, fontWeight: 700 }}>{fmtAud(b.statementBalance)}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 11.5, color: "var(--xui-ink-muted)" }}>Balance in Xero</div>
+                        <div style={{ fontSize: 11.5, color: "var(--xui-ink-muted)" }}>Balance in LedgerFlow</div>
                         <div style={{ fontSize: 19, fontWeight: 700 }}>{fmtAud(b.bookBalance)}</div>
                       </div>
                       <div>
@@ -929,6 +969,12 @@ export function BankingReconcileView({
                               <>
                                 <strong>Auto-Match Payment:</strong> {line.matchedPayment.invoiceNumber || line.matchedPayment.paymentId} (
                                 {fmtAud(line.matchedPayment.amount)})
+                              </>
+                            )}
+                            {line.suggestionType === "MATCH_EXISTING_TRANSFER" && line.matchedTransfer && (
+                              <>
+                                <strong>Auto-Match Inter-Bank Transfer:</strong> {line.matchedTransfer.fromBankName} &rarr;{" "}
+                                {line.matchedTransfer.toBankName} ({fmtAud(line.matchedTransfer.amount)})
                               </>
                             )}
                             {line.suggestionType === "MATCH_INVOICE" && line.matchedDocument && (

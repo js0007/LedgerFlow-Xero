@@ -84,6 +84,7 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
 
   // Products UI
   const [prodModal, setProdModal] = useState(false);
+  const [editingProdId, setEditingProdId] = useState<string | null>(null);
   const [pForm, setPForm] = useState({
     code: "",
     name: "",
@@ -203,13 +204,43 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
     }
   }
 
+  function openNewProd() {
+    setEditingProdId(null);
+    setPForm({
+      code: "",
+      name: "",
+      costPrice: "0.00",
+      salePrice: "0.00",
+      purchaseAccountId: "",
+      purchaseTaxRateId: "",
+      salesAccountId: "",
+      salesTaxRateId: "",
+    });
+    setProdModal(true);
+  }
+
+  function openEditProd(p: ProductItem) {
+    setEditingProdId(p.id);
+    setPForm({
+      code: p.code,
+      name: p.name,
+      costPrice: p.costPrice ?? "0.00",
+      salePrice: p.salePrice ?? "0.00",
+      purchaseAccountId: p.purchaseAccountId || "",
+      purchaseTaxRateId: p.purchaseTaxRateId || "",
+      salesAccountId: p.salesAccountId || "",
+      salesTaxRateId: p.salesTaxRateId || "",
+    });
+    setProdModal(true);
+  }
+
   async function saveProduct() {
     if (!pForm.code.trim() || !pForm.name.trim()) {
       onToast("error", "Product code and name are required.");
       return;
     }
     try {
-      await api.post(`/orgs/${orgId}/products`, {
+      const payload = {
         code: pForm.code,
         name: pForm.name,
         costPrice: pForm.costPrice,
@@ -218,9 +249,25 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
         purchaseTaxRateId: pForm.purchaseTaxRateId || null,
         salesAccountId: pForm.salesAccountId || null,
         salesTaxRateId: pForm.salesTaxRateId || null,
-      });
-      onToast("success", `Created item '${pForm.code}'.`);
+      };
+      if (editingProdId) {
+        await api.patch(`/orgs/${orgId}/products/${editingProdId}`, payload);
+        onToast("success", `Updated item '${pForm.code}'.`);
+      } else {
+        await api.post(`/orgs/${orgId}/products`, payload);
+        onToast("success", `Created item '${pForm.code}'.`);
+      }
       setProdModal(false);
+      await loadAll();
+    } catch (e) {
+      onToast("error", (e as Error).message);
+    }
+  }
+
+  async function archiveProduct(p: ProductItem) {
+    try {
+      await api.del(`/orgs/${orgId}/products/${p.id}`);
+      onToast("info", `Archived item '${p.code}'.`);
       await loadAll();
     } catch (e) {
       onToast("error", (e as Error).message);
@@ -480,7 +527,7 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
             <h1 className="x-page-title">Products & Services ({products.length})</h1>
           </div>
           {canWrite && (
-            <button className="x-btn x-btn-primary" onClick={() => setProdModal(true)}>
+            <button className="x-btn x-btn-primary" onClick={openNewProd}>
               <Plus size={15} /> New Item
             </button>
           )}
@@ -496,6 +543,7 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
                   <th className="num">Cost Price</th>
                   <th className="num">Sale Price</th>
                   <th className="num">Qty on Hand</th>
+                  {canWrite && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -511,6 +559,14 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
                     <td className="num">{p.costPrice ? fmtAud(p.costPrice) : "-"}</td>
                     <td className="num">{p.salePrice ? fmtAud(p.salePrice) : "-"}</td>
                     <td className="num">{p.isTracked ? p.quantityOnHand : "-"}</td>
+                    {canWrite && (
+                      <td>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="x-btn x-btn-sm" onClick={() => openEditProd(p)}>Edit</button>
+                          <button className="x-btn x-btn-sm x-btn-danger" onClick={() => archiveProduct(p)}>Archive</button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -522,7 +578,7 @@ export function ContactsAndSettingsView({ orgId, route, role, onNavigate, onOrgU
           <div className="x-modal-backdrop" onClick={() => setProdModal(false)}>
             <div className="x-modal narrow" onClick={(e) => e.stopPropagation()}>
               <div className="x-modal-head">
-                <h3 style={{ margin: 0 }}>New Product / Service Item</h3>
+                <h3 style={{ margin: 0 }}>{editingProdId ? `Edit Item: ${pForm.code}` : "New Product / Service Item"}</h3>
                 <button className="x-btn x-btn-sm" onClick={() => setProdModal(false)}>Close</button>
               </div>
               <div className="x-modal-body" style={{ display: "grid", gap: 10 }}>

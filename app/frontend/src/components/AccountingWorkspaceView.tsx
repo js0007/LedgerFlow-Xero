@@ -90,6 +90,7 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
   const [mjTab, setMjTab] = useState<string>("ALL");
   const [mjModalOpen, setMjModalOpen] = useState(false);
   const [mjEditingId, setMjEditingId] = useState<string | null>(null);
+  const [mjEditingStatus, setMjEditingStatus] = useState<"DRAFT" | "POSTED" | null>(null);
   const [mjForm, setMjForm] = useState({
     narration: "",
     journalDate: new Date().toISOString().slice(0, 10),
@@ -164,7 +165,7 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, route]);
 
-  const noTaxRate = taxRates.find((t) => t.code === "NONE") || taxRates[0];
+  const noTaxRate = taxRates.find((t) => t.code === "BASEXCLUDED") || taxRates.find((t) => t.code === "NONE") || taxRates[0];
   const track1 = tracking[0] || null;
 
   // --- COA HANDLERS ---
@@ -198,8 +199,18 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
 
   async function archiveAccount(acc: AccountItem) {
     try {
-      await api.del(`/orgs/${orgId}/accounts/${acc.id}`);
+      await api.patch(`/orgs/${orgId}/accounts/${acc.id}`, { status: "ARCHIVED" });
       onToast("success", `Archived account ${acc.code || ""} ${acc.name}.`);
+      await loadCore();
+    } catch (e) {
+      onToast("error", (e as Error).message);
+    }
+  }
+
+  async function restoreAccount(acc: AccountItem) {
+    try {
+      await api.patch(`/orgs/${orgId}/accounts/${acc.id}`, { status: "ACTIVE" });
+      onToast("success", `Restored account ${acc.code || ""} ${acc.name}.`);
       await loadCore();
     } catch (e) {
       onToast("error", (e as Error).message);
@@ -209,6 +220,7 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
   // --- MANUAL JOURNAL HANDLERS ---
   function openNewMj() {
     setMjEditingId(null);
+    setMjEditingStatus(null);
     const a1 = mjAccounts[0]?.id || "";
     const a2 = mjAccounts[1]?.id || a1;
     setMjForm({
@@ -227,6 +239,7 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
 
   function openEditMj(j: ManualJournalDoc) {
     setMjEditingId(j.id);
+    setMjEditingStatus(j.status === "POSTED" ? "POSTED" : "DRAFT");
     setMjForm({
       narration: j.narration,
       journalDate: j.journalDate,
@@ -265,13 +278,20 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
     try {
       if (mjEditingId) {
         await api.patch(`/orgs/${orgId}/manual-journals/${mjEditingId}`, payload);
-        if (postImmediately) {
+        if (postImmediately && mjEditingStatus !== "POSTED") {
           await api.post(`/orgs/${orgId}/manual-journals/${mjEditingId}/post`);
         }
       } else {
         await api.post(`/orgs/${orgId}/manual-journals`, payload);
       }
-      onToast("success", postImmediately ? "Manual journal posted to General Ledger." : "Manual journal saved as draft.");
+      onToast(
+        "success",
+        mjEditingStatus === "POSTED"
+          ? "Posted manual journal updated via append-only reversal + repost."
+          : postImmediately
+          ? "Manual journal posted to General Ledger."
+          : "Manual journal saved as draft."
+      );
       setMjModalOpen(false);
       await loadRouteData();
     } catch (e) {
@@ -463,6 +483,11 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
                               Archive
                             </button>
                           )}
+                          {a.status === "ARCHIVED" && (
+                            <button className="x-btn x-btn-sm" onClick={() => restoreAccount(a)}>
+                              Restore
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -649,9 +674,14 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
                           </>
                         )}
                         {j.status === "POSTED" && isAdviser && (
-                          <button className="x-btn x-btn-danger x-btn-sm" onClick={() => voidMj(j.id)}>
-                            <Undo2 size={13} /> Void
-                          </button>
+                          <>
+                            <button className="x-btn x-btn-sm" onClick={() => openEditMj(j)}>
+                              Edit
+                            </button>
+                            <button className="x-btn x-btn-danger x-btn-sm" onClick={() => voidMj(j.id)}>
+                              <Undo2 size={13} /> Void
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -673,7 +703,13 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
           <div className="x-modal-backdrop" onClick={() => setMjModalOpen(false)}>
             <div className="x-modal" onClick={(e) => e.stopPropagation()}>
               <div className="x-modal-head">
-                <h3 style={{ margin: 0 }}>{mjEditingId ? "Edit Draft Manual Journal" : "New Manual Journal"}</h3>
+                <h3 style={{ margin: 0 }}>
+                  {mjEditingId
+                    ? mjEditingStatus === "POSTED"
+                      ? "Edit Posted Manual Journal (Reversal + Repost)"
+                      : "Edit Draft Manual Journal"
+                    : "New Manual Journal"}
+                </h3>
                 <button className="x-btn x-btn-sm" onClick={() => setMjModalOpen(false)}>
                   Close
                 </button>
@@ -746,6 +782,7 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
                       <th className="num" style={{ width: 115 }}>
                         Credit AUD
                       </th>
+                      <th style={{ width: 38 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -839,6 +876,21 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
                             }}
                           />
                         </td>
+                        <td>
+                          <button
+                            className="x-btn x-btn-sm"
+                            disabled={mjForm.lines.length <= 2}
+                            title="Remove line"
+                            onClick={() =>
+                              setMjForm({
+                                ...mjForm,
+                                lines: mjForm.lines.filter((_, i) => i !== idx),
+                              })
+                            }
+                          >
+                            &times;
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -879,11 +931,13 @@ export function AccountingWorkspaceView({ orgId, route, role, onToast }: Props) 
                   Cancel
                 </button>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="x-btn" onClick={() => submitMj(false)}>
-                    Save as Draft
-                  </button>
+                  {mjEditingStatus !== "POSTED" && (
+                    <button className="x-btn" onClick={() => submitMj(false)}>
+                      Save as Draft
+                    </button>
+                  )}
                   <button className="x-btn x-btn-green" disabled={!isBalanced} onClick={() => submitMj(true)}>
-                    Post Journal
+                    {mjEditingStatus === "POSTED" ? "Republish Changes" : "Post Journal"}
                   </button>
                 </div>
               </div>

@@ -15,6 +15,8 @@ from .ledger import assert_can_write, parse_iso_date, write_audit
 OUTPUT_TYPES = {"OUTPUT", "EXEMPTOUTPUT", "EXEMPTEXPORT"}
 GST_SALES_TYPES = {"OUTPUT"}
 GST_PURCHASE_TYPES = {"INPUT", "GSTONIMPORTS", "CAPEXINPUT", "GSTONCAPIMPORTS"}
+CAPITAL_PURCHASE_TYPES = {"CAPEXINPUT", "EXEMPTCAPITAL", "GSTONCAPIMPORTS"}
+NON_CAPITAL_PURCHASE_TYPES = {"INPUT", "EXEMPTEXPENSES", "GSTONIMPORTS"}
 
 
 def _allocate_cash_invoice_bas(
@@ -59,12 +61,14 @@ def _gather_period_tax_rows(
     period_end: str,
     method: str,
     min_journal_number: int | None = None,
-) -> tuple[list[dict[str, Any]], int]:
-    """Gather tax contributions for [period_start, period_end] (or unfiled backdated rows if period_start is None)."""
+    prior_filed_alloc_ids: set[str] | None = None,
+) -> tuple[list[dict[str, Any]], int, list[str]]:
+    """Gather tax contributions for [period_start, period_end] (or unfiled backdated rows if min_journal_number is set)."""
     max_j_row = conn.execute("SELECT COALESCE(MAX(journal_number), 0) FROM journals WHERE org_id = ?", (org_id,)).fetchone()
     max_jnum = int(max_j_row[0])
 
     rows: list[dict[str, Any]] = []
+    alloc_ids: list[str] = []
     if method == "ACCRUAL":
         sql = """
             SELECT jl.*, j.journal_number, j.journal_date, j.source_type, j.reference, tr.name AS tax_name
@@ -115,31 +119,43 @@ def _gather_period_tax_rows(
             pay_params.extend([period_start, period_end])
 
         for p in conn.execute(pay_sql, pay_params).fetchall():
-            for c in _allocate_cash_invoice_bas(conn, p["invoice_id"], int(p["amount_cents"]), sign=1):
+            # Credit Note cash refunds reduce GST sales/credits on Cash BAS (sign=-1)
+            pay_sign = -1 if p["invoice_type"] in ("ACCRECCREDIT", "ACCPAYCREDIT") else 1
+            for c in _allocate_cash_invoice_bas(conn, p["invoice_id"], int(p["amount_cents"]), sign=pay_sign):
                 c["date"] = p["payment_date"]
                 c["journalNumber"] = p["journal_number"]
                 c["reference"] = p["reference"] or p["invoice_number"]
                 rows.append(c)
 
-        # 2. Credit Note Allocations within date window (CRITICAL E35/E36 Rule: Unallocated CN does NOT reduce Cash BAS;
-        # allocating settles BOTH the Credit Note (-CN) and the Target Invoice/Bill (+Target) simultaneously!)
-        if min_journal_number is None:
-            alloc_sql = """
-                SELECT ca.*, cn.invoice_number AS cn_number, tgt.invoice_number AS tgt_number
-                FROM credit_note_allocations ca
-                JOIN invoices cn ON cn.id = ca.credit_note_id
-                JOIN invoices tgt ON tgt.id = ca.target_invoice_id
-                WHERE ca.org_id = ? AND ca.status = 'ACTIVE' AND ca.allocation_date BETWEEN ? AND ?
-            """
-            for a in conn.execute(alloc_sql, (org_id, period_start, period_end)).fetchall():
-                for c in _allocate_cash_invoice_bas(conn, a["credit_note_id"], int(a["amount_cents"]), sign=-1):
-                    c["date"] = a["allocation_date"]
-                    c["reference"] = a["cn_number"]
-                    rows.append(c)
-                for c in _allocate_cash_invoice_bas(conn, a["target_invoice_id"], int(a["amount_cents"]), sign=1):
-                    c["date"] = a["allocation_date"]
-                    c["reference"] = a["tgt_number"]
-                    rows.append(c)
+        # 2. Credit Note Allocations within date window (or unfiled backdated allocations since last finalised BAS)
+        alloc_sql = """
+            SELECT ca.*, cn.invoice_number AS cn_number, tgt.invoice_number AS tgt_number
+            FROM credit_note_allocations ca
+            JOIN invoices cn ON cn.id = ca.credit_note_id
+            JOIN invoices tgt ON tgt.id = ca.target_invoice_id
+            WHERE ca.org_id = ? AND ca.status = 'ACTIVE'
+        """
+        alloc_params: list[Any] = [org_id]
+        if min_journal_number is not None:
+            alloc_sql += " AND ca.allocation_date < ?"
+            alloc_params.append(period_start)
+        else:
+            alloc_sql += " AND ca.allocation_date BETWEEN ? AND ?"
+            alloc_params.extend([period_start, period_end])
+
+        filed_set = prior_filed_alloc_ids or set()
+        for a in conn.execute(alloc_sql, alloc_params).fetchall():
+            if min_journal_number is not None and a["id"] in filed_set:
+                continue
+            alloc_ids.append(a["id"])
+            for c in _allocate_cash_invoice_bas(conn, a["credit_note_id"], int(a["amount_cents"]), sign=-1):
+                c["date"] = a["allocation_date"]
+                c["reference"] = a["cn_number"]
+                rows.append(c)
+            for c in _allocate_cash_invoice_bas(conn, a["target_invoice_id"], int(a["amount_cents"]), sign=1):
+                c["date"] = a["allocation_date"]
+                c["reference"] = a["tgt_number"]
+                rows.append(c)
 
         # 3. Direct BankTransactions (CASHREC / CASHPAID) + Taxed Manual Journals with show_on_cash_basis=1
         direct_sql = """
@@ -175,7 +191,7 @@ def _gather_period_tax_rows(
                 }
             )
 
-    return rows, max_jnum
+    return rows, max_jnum, alloc_ids
 
 
 def _aggregate_bas_boxes(rows: list[dict[str, Any]], g1_mode: str) -> dict[str, Any]:
@@ -190,9 +206,9 @@ def _aggregate_bas_boxes(rows: list[dict[str, Any]], g1_mode: str) -> dict[str, 
         code = r["taxTypeCode"]
         if code in OUTPUT_TYPES:
             g1_cents += r["grossCents"] if g1_mode == "INCLUSIVE" else r["netCents"]
-        if code in ("CAPEXINPUT", "GSTONCAPIMPORTS"):
+        if code in CAPITAL_PURCHASE_TYPES:
             g10_cents += r["grossCents"] if g1_mode == "INCLUSIVE" else r["netCents"]
-        if code in ("INPUT", "EXEMPTINPUT", "GSTONIMPORTS"):
+        if code in NON_CAPITAL_PURCHASE_TYPES:
             g11_cents += r["grossCents"] if g1_mode == "INCLUSIVE" else r["netCents"]
         if code in GST_SALES_TYPES:
             box_1a_cents += r["taxCents"]
@@ -256,20 +272,35 @@ def compute_bas_statement(conn: sqlite3.Connection, *, org_id: str, period_start
         snap["finalisedAt"] = existing["finalised_at"]
         return snap
 
-    # Find highest finalised max_journal_number prior to period_start for Unfiled Amounts watermark detection!
-    prev_fin = conn.execute(
-        "SELECT MAX(max_journal_number) AS max_j FROM bas_statements WHERE org_id = ? AND status = 'FINALISED' AND period_end < ?",
+    # Find highest finalised max_journal_number & already-filed Cash CN allocation IDs prior to period_start
+    prior_rows = conn.execute(
+        "SELECT max_journal_number, snapshot_json FROM bas_statements WHERE org_id = ? AND status = 'FINALISED' AND period_end < ?",
         (org_id, period_start),
-    ).fetchone()
-    prev_watermark = int(prev_fin["max_j"]) if (prev_fin and prev_fin["max_j"] is not None) else None
+    ).fetchall()
+    prev_watermarks = [int(r["max_journal_number"]) for r in prior_rows if r["max_journal_number"] is not None]
+    prev_watermark = max(prev_watermarks) if prev_watermarks else None
+    prior_filed_alloc_ids: set[str] = set()
+    for pr in prior_rows:
+        try:
+            psnap = json.loads(pr["snapshot_json"] or "{}")
+            prior_filed_alloc_ids.update(psnap.get("filedAllocationIds") or [])
+        except Exception:
+            pass
 
-    period_rows, max_jnum = _gather_period_tax_rows(
+    period_rows, max_jnum, period_alloc_ids = _gather_period_tax_rows(
         conn, org_id=org_id, period_start=period_start, period_end=period_end, method=method
     )
     unfiled_rows: list[dict[str, Any]] = []
-    if prev_watermark is not None:
-        unfiled_rows, _ = _gather_period_tax_rows(
-            conn, org_id=org_id, period_start=period_start, period_end=period_end, method=method, min_journal_number=prev_watermark
+    unfiled_alloc_ids: list[str] = []
+    if prev_watermark is not None or prior_rows:
+        unfiled_rows, _, unfiled_alloc_ids = _gather_period_tax_rows(
+            conn,
+            org_id=org_id,
+            period_start=period_start,
+            period_end=period_end,
+            method=method,
+            min_journal_number=prev_watermark if prev_watermark is not None else 0,
+            prior_filed_alloc_ids=prior_filed_alloc_ids,
         )
 
     combined = _aggregate_bas_boxes(period_rows + unfiled_rows, g1_mode)
@@ -286,6 +317,7 @@ def compute_bas_statement(conn: sqlite3.Connection, *, org_id: str, period_start
         "maxJournalNumber": max_jnum,
         "previousWatermark": prev_watermark,
         "unfiledIncludedCount": len(unfiled_rows),
+        "filedAllocationIds": sorted(set(period_alloc_ids + unfiled_alloc_ids + list(prior_filed_alloc_ids))),
         "labels": combined["labels"],
         "byTaxRate": combined["byTaxRate"],
         "transactions": [

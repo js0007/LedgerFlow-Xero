@@ -82,6 +82,8 @@ export const CommercialViews: React.FC<CommercialProps> = ({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editKind, setEditKind] = useState<"ACCREC" | "ACCPAY" | "ACCRECCREDIT" | "ACCPAYCREDIT" | "QUOTE" | "PO">("ACCREC");
   const [editingDoc, setEditingDoc] = useState<InvoiceDocument | null>(null);
+  const [editingQuoteOrPo, setEditingQuoteOrPo] = useState<{ kind: "QUOTE" | "PO"; id: string; docNumber: string; status: string } | null>(null);
+  const [editUnlocked, setEditUnlocked] = useState(false);
   const [contactId, setContactId] = useState("");
   const [docNumber, setDocNumber] = useState("");
   const [reference, setReference] = useState("");
@@ -99,6 +101,7 @@ export const CommercialViews: React.FC<CommercialProps> = ({
   const [allocTargets, setAllocTargets] = useState<InvoiceDocument[]>([]);
   const [allocMap, setAllocMap] = useState<Record<string, string>>({});
 
+  const readOnly = org.role === "READONLY";
   const isSalesSection = mode === "sales-overview" || mode === "invoices" || mode === "quotes";
   const defaultSalesAcc = accounts.find((a) => a.code === "200")?.id || accounts[0]?.id || "";
   const defaultPurchAcc = accounts.find((a) => a.code === "453")?.id || accounts[0]?.id || "";
@@ -130,6 +133,8 @@ export const CommercialViews: React.FC<CommercialProps> = ({
 
   const openNewEditor = (kind: "ACCREC" | "ACCPAY" | "ACCRECCREDIT" | "ACCPAYCREDIT" | "QUOTE" | "PO") => {
     setEditingDoc(null);
+    setEditingQuoteOrPo(null);
+    setEditUnlocked(false);
     setEditKind(kind);
     const isPay = kind === "ACCPAY" || kind === "ACCPAYCREDIT" || kind === "PO";
     setTaxMode(isPay ? "INCLUSIVE" : "EXCLUSIVE");
@@ -151,37 +156,74 @@ export const CommercialViews: React.FC<CommercialProps> = ({
     }
   }, [externalCreateKind]);
 
-  const openExistingDoc = async (doc: InvoiceDocument) => {
-    const fresh = await api.get<InvoiceDocument>(`/orgs/${org.id}/invoices/${doc.id}`);
-    setEditingDoc(fresh);
-    setEditKind(fresh.invoiceType);
-    setContactId(fresh.contactId);
-    setDocNumber(fresh.invoiceNumber);
-    setReference(fresh.reference || "");
-    setIssueDate(fresh.issueDate);
-    setDueDate(fresh.dueDate);
-    setTaxMode(fresh.taxMode);
-    setLines(fresh.lines.map((l) => ({ ...l })));
-    setPayAmount(fresh.amountDue);
-    setPayDate(new Date().toISOString().slice(0, 10));
-    setPayBankId(banks[0]?.id || "");
-    setPayRef("");
+  const openExistingQuoteOrPo = (kind: "QUOTE" | "PO", doc: any) => {
+    setEditingDoc(null);
+    setEditingQuoteOrPo({
+      kind,
+      id: doc.id,
+      docNumber: kind === "QUOTE" ? doc.quoteNumber : doc.poNumber,
+      status: doc.status,
+    });
+    setEditUnlocked(false);
+    setEditKind(kind);
+    setContactId(doc.contactId || doc.contact_id || "");
+    setDocNumber(kind === "QUOTE" ? doc.quoteNumber : doc.poNumber);
+    setReference(doc.reference || "");
+    setIssueDate(doc.issueDate);
+    setDueDate((kind === "QUOTE" ? doc.expiryDate : doc.deliveryDate) || doc.issueDate);
+    setTaxMode(doc.taxMode || (kind === "PO" ? "INCLUSIVE" : "EXCLUSIVE"));
+    setLines((doc.lines || []).map((l: any) => ({ ...l })));
     setAllocOpen(false);
     setEditorOpen(true);
+  };
+
+  const openExistingDoc = async (doc: InvoiceDocument) => {
+    try {
+      const fresh = await api.get<InvoiceDocument>(`/orgs/${org.id}/invoices/${doc.id}`);
+      setEditingQuoteOrPo(null);
+      setEditingDoc(fresh);
+      setEditUnlocked(false);
+      setEditKind(fresh.invoiceType);
+      setContactId(fresh.contactId);
+      setDocNumber(fresh.invoiceNumber);
+      setReference(fresh.reference || "");
+      setIssueDate(fresh.issueDate);
+      setDueDate(fresh.dueDate);
+      setTaxMode(fresh.taxMode);
+      setLines(fresh.lines.map((l) => ({ ...l })));
+      setPayAmount(fresh.amountDue);
+      setPayDate(new Date().toISOString().slice(0, 10));
+      setPayBankId(banks[0]?.id || "");
+      setPayRef("");
+      setAllocOpen(false);
+      setEditorOpen(true);
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
   };
 
   const handleSaveDoc = async (approveImmediately: boolean) => {
     try {
       if (!contactId) throw new Error("Select a customer or supplier first.");
-      if (editKind === "QUOTE") {
+      if (editingQuoteOrPo?.kind === "QUOTE") {
+        await api.patch(`/orgs/${org.id}/quotes/${editingQuoteOrPo.id}`, {
+          contactId, reference, issueDate, expiryDate: dueDate, taxMode, lines, title: reference || "Sales Quote",
+        });
+        onNotify("success", `Updated ${editingQuoteOrPo.docNumber}.`);
+      } else if (editingQuoteOrPo?.kind === "PO") {
+        await api.patch(`/orgs/${org.id}/purchase-orders/${editingQuoteOrPo.id}`, {
+          contactId, reference, issueDate, deliveryDate: dueDate, taxMode, lines,
+        });
+        onNotify("success", `Updated ${editingQuoteOrPo.docNumber}.`);
+      } else if (editKind === "QUOTE") {
         await api.post(`/orgs/${org.id}/quotes`, { contactId, reference, issueDate, expiryDate: dueDate, taxMode, lines, title: reference || "Sales Quote" });
         onNotify("success", "Quote saved cleanly (zero GL impact until invoiced).");
       } else if (editKind === "PO") {
         await api.post(`/orgs/${org.id}/purchase-orders`, { contactId, reference, issueDate, deliveryDate: dueDate, taxMode, lines });
         onNotify("success", "Purchase Order saved.");
-      } else if (editingDoc && editingDoc.status === "DRAFT") {
+      } else if (editingDoc && (editingDoc.status === "DRAFT" || editingDoc.status === "SUBMITTED")) {
         await api.patch(`/orgs/${org.id}/invoices/${editingDoc.id}`, {
-          contactId, invoiceNumber: docNumber || undefined, reference, issueDate, dueDate, taxMode, lines,
+          contactId, invoiceNumber: docNumber || undefined, reference, issueDate, dueDate, taxMode, lines, version: editingDoc.version,
         });
         if (approveImmediately) {
           await api.post(`/orgs/${org.id}/invoices/${editingDoc.id}/approve`);
@@ -189,6 +231,11 @@ export const CommercialViews: React.FC<CommercialProps> = ({
         } else {
           onNotify("success", "Draft updated.");
         }
+      } else if (editingDoc && editingDoc.status === "AUTHORISED") {
+        await api.patch(`/orgs/${org.id}/invoices/${editingDoc.id}`, {
+          contactId, invoiceNumber: docNumber || undefined, reference, issueDate, dueDate, taxMode, lines, version: editingDoc.version,
+        });
+        onNotify("success", `${editingDoc.invoiceNumber} updated with reversal & reposted GL journal.`);
       } else {
         const res = await api.post<InvoiceDocument>(`/orgs/${org.id}/invoices`, {
           invoiceType: editKind,
@@ -206,6 +253,73 @@ export const CommercialViews: React.FC<CommercialProps> = ({
       setEditorOpen(false);
       await loadData();
       await onDataChanged();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handleDeleteInvoice = async (doc: InvoiceDocument) => {
+    try {
+      await api.del(`/orgs/${org.id}/invoices/${doc.id}`);
+      onNotify("info", `Deleted draft ${doc.invoiceNumber}.`);
+      setEditorOpen(false);
+      await loadData();
+      await onDataChanged();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handleDeallocate = async (allocId: string) => {
+    if (!editingDoc) return;
+    try {
+      await api.del(`/orgs/${org.id}/credit-note-allocations/${allocId}`);
+      onNotify("info", "Credit allocation reversed and balances reopened.");
+      await openExistingDoc(editingDoc);
+      await loadData();
+      await onDataChanged();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handleQuoteStatus = async (qId: string, qNumber: string, status: string) => {
+    try {
+      await api.patch(`/orgs/${org.id}/quotes/${qId}`, { status });
+      onNotify("success", `${qNumber} marked ${status}.`);
+      await loadData();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handleDeleteQuote = async (qId: string, qNumber: string) => {
+    try {
+      await api.del(`/orgs/${org.id}/quotes/${qId}`);
+      onNotify("info", `Deleted quote ${qNumber}.`);
+      setEditorOpen(false);
+      await loadData();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handlePoStatus = async (pId: string, poNumber: string, status: string) => {
+    try {
+      await api.patch(`/orgs/${org.id}/purchase-orders/${pId}`, { status });
+      onNotify("success", `${poNumber} marked ${status}.`);
+      await loadData();
+    } catch (e: any) {
+      onNotify("error", e.message);
+    }
+  };
+
+  const handleDeletePo = async (pId: string, poNumber: string) => {
+    try {
+      await api.del(`/orgs/${org.id}/purchase-orders/${pId}`);
+      onNotify("info", `Deleted purchase order ${poNumber}.`);
+      setEditorOpen(false);
+      await loadData();
     } catch (e: any) {
       onNotify("error", e.message);
     }
@@ -327,21 +441,23 @@ export const CommercialViews: React.FC<CommercialProps> = ({
           <div className="x-breadcrumb">Business &bull; {isSalesSection ? "Sales" : "Purchases"}</div>
           <h1 className="x-page-title">{titleText}</h1>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {isSalesSection ? (
-            <>
-              <button className="x-btn" onClick={() => openNewEditor("QUOTE")}>+ New Quote</button>
-              <button className="x-btn" onClick={() => openNewEditor("ACCRECCREDIT")}>+ Credit Note</button>
-              <button className="x-btn x-btn-primary" onClick={() => openNewEditor("ACCREC")}><Plus size={14} /> New Invoice</button>
-            </>
-          ) : (
-            <>
-              <button className="x-btn" onClick={() => openNewEditor("PO")}>+ New PO</button>
-              <button className="x-btn" onClick={() => openNewEditor("ACCPAYCREDIT")}>+ Supplier Credit</button>
-              <button className="x-btn x-btn-primary" onClick={() => openNewEditor("ACCPAY")}><Plus size={14} /> New Bill</button>
-            </>
-          )}
-        </div>
+        {!readOnly && (
+          <div style={{ display: "flex", gap: 8 }}>
+            {isSalesSection ? (
+              <>
+                <button className="x-btn" onClick={() => openNewEditor("QUOTE")}>+ New Quote</button>
+                <button className="x-btn" onClick={() => openNewEditor("ACCRECCREDIT")}>+ Credit Note</button>
+                <button className="x-btn x-btn-primary" onClick={() => openNewEditor("ACCREC")}><Plus size={14} /> New Invoice</button>
+              </>
+            ) : (
+              <>
+                <button className="x-btn" onClick={() => openNewEditor("PO")}>+ New PO</button>
+                <button className="x-btn" onClick={() => openNewEditor("ACCPAYCREDIT")}>+ Supplier Credit</button>
+                <button className="x-btn x-btn-primary" onClick={() => openNewEditor("ACCPAY")}><Plus size={14} /> New Bill</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="x-main">
@@ -398,20 +514,42 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                     <td>{q.title || q.reference || "—"}</td>
                     <td>{q.issueDate}</td>
                     <td>{q.expiryDate || "—"}</td>
-                    <td><span className={`x-badge ${q.status === "INVOICED" ? "green" : "blue"}`}>{q.status}</span></td>
+                    <td><span className={`x-badge ${q.status === "INVOICED" || q.status === "ACCEPTED" ? "green" : q.status === "DECLINED" ? "red" : "blue"}`}>{q.status}</span></td>
                     <td className="num">${fmtAud(q.total)}</td>
                     <td>
                       {q.status !== "INVOICED" ? (
-                        <button
-                          className="x-btn x-btn-sm x-btn-primary"
-                          onClick={async () => {
-                            const inv = await api.post<InvoiceDocument>(`/orgs/${org.id}/quotes/${q.id}/convert`, { approve: false });
-                            onNotify("success", `Converted ${q.quoteNumber} → Draft Invoice ${inv.invoiceNumber}.`);
-                            await loadData();
-                          }}
-                        >
-                          <ArrowRightLeft size={12} /> Copy to Invoice
-                        </button>
+                        !readOnly && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button className="x-btn x-btn-sm" onClick={() => openExistingQuoteOrPo("QUOTE", q)}>Edit</button>
+                            {q.status === "DRAFT" && (
+                              <button className="x-btn x-btn-sm" onClick={() => handleQuoteStatus(q.id, q.quoteNumber, "SENT")}>Send</button>
+                            )}
+                            {(q.status === "DRAFT" || q.status === "SENT") && (
+                              <button className="x-btn x-btn-sm" onClick={() => handleQuoteStatus(q.id, q.quoteNumber, "ACCEPTED")}>Accept</button>
+                            )}
+                            {(q.status === "SENT" || q.status === "DRAFT") && (
+                              <button className="x-btn x-btn-sm" onClick={() => handleQuoteStatus(q.id, q.quoteNumber, "DECLINED")}>Decline</button>
+                            )}
+                            <button
+                              className="x-btn x-btn-sm x-btn-primary"
+                              onClick={async () => {
+                                try {
+                                  const inv = await api.post<InvoiceDocument>(`/orgs/${org.id}/quotes/${q.id}/convert`, { approve: false });
+                                  onNotify("success", `Converted ${q.quoteNumber} → Draft Invoice ${inv.invoiceNumber}.`);
+                                  await loadData();
+                                  await onDataChanged();
+                                } catch (e: any) {
+                                  onNotify("error", e.message);
+                                }
+                              }}
+                            >
+                              <ArrowRightLeft size={12} /> Copy to Invoice
+                            </button>
+                            <button className="x-btn x-btn-sm x-btn-danger" onClick={() => handleDeleteQuote(q.id, q.quoteNumber)}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        )
                       ) : <span style={{ fontSize: 12, color: "var(--xui-green)" }}>Invoiced</span>}
                     </td>
                   </tr>
@@ -437,20 +575,39 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                     <td>{p.reference || "—"}</td>
                     <td>{p.issueDate}</td>
                     <td>{p.deliveryDate || "—"}</td>
-                    <td><span className={`x-badge ${p.status === "BILLED" ? "green" : "blue"}`}>{p.status}</span></td>
+                    <td><span className={`x-badge ${p.status === "BILLED" || p.status === "APPROVED" ? "green" : "blue"}`}>{p.status}</span></td>
                     <td className="num">${fmtAud(p.total)}</td>
                     <td>
                       {p.status !== "BILLED" ? (
-                        <button
-                          className="x-btn x-btn-sm x-btn-primary"
-                          onClick={async () => {
-                            const bill = await api.post<InvoiceDocument>(`/orgs/${org.id}/purchase-orders/${p.id}/convert`, { approve: false });
-                            onNotify("success", `Copied ${p.poNumber} → Draft Bill ${bill.invoiceNumber}.`);
-                            await loadData();
-                          }}
-                        >
-                          <ArrowRightLeft size={12} /> Copy to Bill
-                        </button>
+                        !readOnly && (
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <button className="x-btn x-btn-sm" onClick={() => openExistingQuoteOrPo("PO", p)}>Edit</button>
+                            {p.status === "DRAFT" && (
+                              <button className="x-btn x-btn-sm" onClick={() => handlePoStatus(p.id, p.poNumber, "AWAITING_APPROVAL")}>Submit</button>
+                            )}
+                            {(p.status === "DRAFT" || p.status === "AWAITING_APPROVAL") && (
+                              <button className="x-btn x-btn-sm" onClick={() => handlePoStatus(p.id, p.poNumber, "APPROVED")}>Approve</button>
+                            )}
+                            <button
+                              className="x-btn x-btn-sm x-btn-primary"
+                              onClick={async () => {
+                                try {
+                                  const bill = await api.post<InvoiceDocument>(`/orgs/${org.id}/purchase-orders/${p.id}/convert`, { approve: false });
+                                  onNotify("success", `Copied ${p.poNumber} → Draft Bill ${bill.invoiceNumber}.`);
+                                  await loadData();
+                                  await onDataChanged();
+                                } catch (e: any) {
+                                  onNotify("error", e.message);
+                                }
+                              }}
+                            >
+                              <ArrowRightLeft size={12} /> Copy to Bill
+                            </button>
+                            <button className="x-btn x-btn-sm x-btn-danger" onClick={() => handleDeletePo(p.id, p.poNumber)}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        )
                       ) : <span style={{ fontSize: 12, color: "var(--xui-green)" }}>Billed</span>}
                     </td>
                   </tr>
@@ -523,31 +680,47 @@ export const CommercialViews: React.FC<CommercialProps> = ({
             <div className="x-modal-head">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <strong style={{ fontSize: 16 }}>
-                  {editingDoc ? `${editingDoc.invoiceNumber} (${editingDoc.invoiceType})` : `New ${editKind}`}
+                  {editingDoc
+                    ? `${editingDoc.invoiceNumber} (${editingDoc.invoiceType})`
+                    : editingQuoteOrPo
+                    ? `${editingQuoteOrPo.docNumber} (${editingQuoteOrPo.kind})`
+                    : `New ${editKind}`}
                 </strong>
                 {editingDoc && (
                   <span className={`x-badge ${editingDoc.status === "PAID" ? "green" : editingDoc.status === "VOIDED" ? "red" : "blue"}`}>
                     {editingDoc.status}
                   </span>
                 )}
+                {editingQuoteOrPo && <span className="x-badge blue">{editingQuoteOrPo.status}</span>}
                 {editingDoc?.postedJournalNumber && <span className="x-badge">GL Journal #{editingDoc.postedJournalNumber}</span>}
               </div>
               <button className="x-btn x-btn-sm" onClick={() => setEditorOpen(false)}>Close</button>
             </div>
 
             <div className="x-modal-body">
+              {(() => {
+                const docLocked =
+                  readOnly ||
+                  (editingQuoteOrPo
+                    ? editingQuoteOrPo.status === "INVOICED" || editingQuoteOrPo.status === "BILLED"
+                    : !!editingDoc &&
+                      editingDoc.status !== "DRAFT" &&
+                      editingDoc.status !== "SUBMITTED" &&
+                      !(editingDoc.status === "AUTHORISED" && editUnlocked));
+                return (
+                  <>
               <div className="x-grid-4" style={{ marginBottom: 16 }}>
                 <div className="x-field">
                   <label>{editKind.startsWith("ACCPAY") || editKind === "PO" ? "Supplier" : "Customer"}</label>
                   <select
                     className="x-select"
                     value={contactId}
-                    disabled={!!editingDoc && editingDoc.status !== "DRAFT"}
+                    disabled={docLocked}
                     onChange={(e) => {
                       const cid = e.target.value;
                       setContactId(cid);
                       const c = contacts.find((x) => x.id === cid);
-                      if (c && !editingDoc) {
+                      if (c && !editingDoc && !editingQuoteOrPo) {
                         const isP = editKind.startsWith("ACCPAY") || editKind === "PO";
                         const defA = isP ? c.defaultPurchaseAccountId : c.defaultSalesAccountId;
                         const defT = isP ? c.defaultPurchaseTaxRateId : c.defaultSalesTaxRateId;
@@ -563,15 +736,15 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                 </div>
                 <div className="x-field">
                   <label>Issue Date</label>
-                  <input className="x-input" type="date" value={issueDate} disabled={!!editingDoc && editingDoc.status !== "DRAFT"} onChange={(e) => setIssueDate(e.target.value)} />
+                  <input className="x-input" type="date" value={issueDate} disabled={docLocked} onChange={(e) => setIssueDate(e.target.value)} />
                 </div>
                 <div className="x-field">
                   <label>Due / Expiry Date</label>
-                  <input className="x-input" type="date" value={dueDate} disabled={!!editingDoc && editingDoc.status !== "DRAFT"} onChange={(e) => setDueDate(e.target.value)} />
+                  <input className="x-input" type="date" value={dueDate} disabled={docLocked} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
                 <div className="x-field">
                   <label>Amounts Are (GST Mode)</label>
-                  <select className="x-select" value={taxMode} disabled={!!editingDoc && editingDoc.status !== "DRAFT"} onChange={(e) => setTaxMode(e.target.value as any)}>
+                  <select className="x-select" value={taxMode} disabled={docLocked} onChange={(e) => setTaxMode(e.target.value as any)}>
                     <option value="EXCLUSIVE">Tax Exclusive</option>
                     <option value="INCLUSIVE">Tax Inclusive</option>
                     <option value="NO_TAX">No Tax</option>
@@ -582,11 +755,11 @@ export const CommercialViews: React.FC<CommercialProps> = ({
               <div className="x-grid-2" style={{ marginBottom: 14 }}>
                 <div className="x-field">
                   <label>Document Number (Optional auto-sequence)</label>
-                  <input className="x-input" value={docNumber} placeholder="Auto-generated if blank (e.g. INV-0001 / CN-0002)" disabled={!!editingDoc && editingDoc.status !== "DRAFT"} onChange={(e) => setDocNumber(e.target.value)} />
+                  <input className="x-input" value={docNumber} placeholder="Auto-generated if blank (e.g. INV-0001 / CN-0002)" disabled={docLocked || !!editingQuoteOrPo} onChange={(e) => setDocNumber(e.target.value)} />
                 </div>
                 <div className="x-field">
                   <label>Reference</label>
-                  <input className="x-input" value={reference} disabled={!!editingDoc && editingDoc.status !== "DRAFT"} onChange={(e) => setReference(e.target.value)} placeholder="Customer PO / Ref" />
+                  <input className="x-input" value={reference} disabled={docLocked} onChange={(e) => setReference(e.target.value)} placeholder="Customer PO / Ref" />
                 </div>
               </div>
 
@@ -608,7 +781,7 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                 <tbody>
                   {lines.map((ln, i) => {
                     const est = estimateLine(ln, taxMode, taxRates);
-                    const locked = !!editingDoc && editingDoc.status !== "DRAFT";
+                    const locked = docLocked;
                     return (
                       <tr key={i}>
                         <td>
@@ -673,21 +846,29 @@ export const CommercialViews: React.FC<CommercialProps> = ({
               </table>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                {(!editingDoc || editingDoc.status === "DRAFT") ? (
-                  <button className="x-btn x-btn-sm" onClick={() => setLines((p) => [...p, emptyLine(defaultSalesAcc, defaultOutTax)])}>+ Add a new line</button>
+                {!docLocked ? (
+                  <button
+                    className="x-btn x-btn-sm"
+                    onClick={() => {
+                      const isPay = editKind.startsWith("ACCPAY") || editKind === "PO";
+                      setLines((p) => [...p, emptyLine(isPay ? defaultPurchAcc : defaultSalesAcc, isPay ? defaultInTax : defaultOutTax)]);
+                    }}
+                  >
+                    + Add a new line
+                  </button>
                 ) : <div />}
                 <div style={{ width: 290, display: "grid", gap: 6, fontSize: 13.5 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "var(--xui-ink-muted)" }}>Subtotal</span>
-                    <span className="num">${fmtAud(editingDoc ? editingDoc.subTotal : estTotals.net)}</span>
+                    <span className="num">${fmtAud(editingDoc && !editUnlocked ? editingDoc.subTotal : estTotals.net)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "var(--xui-ink-muted)" }}>Total GST</span>
-                    <span className="num">${fmtAud(editingDoc ? editingDoc.totalTax : estTotals.tax)}</span>
+                    <span className="num">${fmtAud(editingDoc && !editUnlocked ? editingDoc.totalTax : estTotals.tax)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 700, borderTop: "1px solid var(--xui-border)", paddingTop: 6 }}>
                     <span>Total AUD</span>
-                    <span className="num">${fmtAud(editingDoc ? editingDoc.total : estTotals.gross)}</span>
+                    <span className="num">${fmtAud(editingDoc && !editUnlocked ? editingDoc.total : estTotals.gross)}</span>
                   </div>
                   {editingDoc && editingDoc.status === "AUTHORISED" && (
                     <div style={{ display: "flex", justifyContent: "space-between", color: "var(--xui-nav-blue)", fontWeight: 700 }}>
@@ -697,29 +878,41 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                   )}
                 </div>
               </div>
+                  </>
+                );
+              })()}
 
-              {/* Authorised Payments & Credit Note Allocation Sections */}
-              {editingDoc && editingDoc.status === "AUTHORISED" && (editingDoc.invoiceType === "ACCREC" || editingDoc.invoiceType === "ACCPAY") && Number(editingDoc.amountDue) > 0 && (
+              {/* Authorised Payments / Cash Refunds & Credit Note Allocation Sections */}
+              {!readOnly && editingDoc && editingDoc.status === "AUTHORISED" && Number(editingDoc.amountDue) > 0 && !editUnlocked && (
                 <div className="x-card" style={{ marginTop: 18, background: "#f8fafc" }}>
-                  <div className="x-card-header"><strong><CreditCard size={14} style={{ verticalAlign: "middle" }} /> Receive / Make Payment</strong></div>
-                  <div className="x-card-body" style={{ display: "grid", gridTemplateColumns: "130px 140px 1fr 160px auto", gap: 10, alignItems: "end" }}>
+                  <div className="x-card-header">
+                    <strong>
+                      <CreditCard size={14} style={{ verticalAlign: "middle" }} />{" "}
+                      {editingDoc.invoiceType.endsWith("CREDIT") ? "Record Cash Refund" : "Receive / Make Payment"}
+                    </strong>
+                  </div>
+                  <div className="x-card-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, alignItems: "end" }}>
                     <div className="x-field"><label>Amount</label><input className="x-input num" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} /></div>
                     <div className="x-field"><label>Date</label><input className="x-input" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} /></div>
                     <div className="x-field">
-                      <label>Paid To / From</label>
+                      <label>{editingDoc.invoiceType === "ACCRECCREDIT" ? "Refund From" : editingDoc.invoiceType === "ACCPAYCREDIT" ? "Refund To" : "Paid To / From"}</label>
                       <select className="x-select" value={payBankId} onChange={(e) => setPayBankId(e.target.value)}>
                         {banks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
                     </div>
                     <div className="x-field"><label>Reference</label><input className="x-input" value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div>
-                    <button className="x-btn x-btn-green" onClick={handleRecordPayment}>Add Payment</button>
+                    <button className="x-btn x-btn-green" onClick={handleRecordPayment}>
+                      {editingDoc.invoiceType.endsWith("CREDIT") ? "Record Refund" : "Add Payment"}
+                    </button>
                   </div>
                 </div>
               )}
 
               {editingDoc && editingDoc.payments.length > 0 && (
                 <div style={{ marginTop: 14 }}>
-                  <strong style={{ fontSize: 13 }}>Recorded Payments</strong>
+                  <strong style={{ fontSize: 13 }}>
+                    {editingDoc.invoiceType.endsWith("CREDIT") ? "Recorded Cash Refunds" : "Recorded Payments"}
+                  </strong>
                   <table className="x-table" style={{ marginTop: 6 }}>
                     <thead><tr><th>Date</th><th>Account</th><th>Reference</th><th>Reconciled</th><th className="num">Amount</th><th></th></tr></thead>
                     <tbody>
@@ -728,7 +921,35 @@ export const CommercialViews: React.FC<CommercialProps> = ({
                           <td>{p.paymentDate}</td><td>{p.bankAccountName}</td><td>{p.reference || "—"}</td>
                           <td><span className={`x-badge ${p.isReconciled ? "green" : ""}`}>{p.isReconciled ? "Reconciled" : "Unreconciled"}</span></td>
                           <td className="num">${fmtAud(p.amount)}</td>
-                          <td><button className="x-btn x-btn-sm x-btn-danger" onClick={() => handleDeletePayment(p.id)}>Remove &amp; Reverse</button></td>
+                          <td>
+                            {!readOnly && (
+                              <button className="x-btn x-btn-sm x-btn-danger" onClick={() => handleDeletePayment(p.id)}>Remove &amp; Reverse</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {editingDoc && editingDoc.allocations && editingDoc.allocations.length > 0 && (
+                <div style={{ marginTop: 14 }}>
+                  <strong style={{ fontSize: 13 }}>Credit Note Allocations</strong>
+                  <table className="x-table" style={{ marginTop: 6 }}>
+                    <thead><tr><th>Date</th><th>Credit Note</th><th>Target Document</th><th className="num">Amount</th><th></th></tr></thead>
+                    <tbody>
+                      {editingDoc.allocations.map((al) => (
+                        <tr key={al.id}>
+                          <td>{al.allocationDate}</td>
+                          <td><strong>{al.creditNoteNumber}</strong></td>
+                          <td><strong>{al.targetInvoiceNumber}</strong></td>
+                          <td className="num">${fmtAud(al.amount)}</td>
+                          <td>
+                            {!readOnly && (
+                              <button className="x-btn x-btn-sm x-btn-danger" onClick={() => handleDeallocate(al.id)}>Unallocate</button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -766,21 +987,51 @@ export const CommercialViews: React.FC<CommercialProps> = ({
             </div>
 
             <div className="x-modal-foot">
-              <div>
-                {editingDoc && editingDoc.status === "AUTHORISED" && Number(editingDoc.amountPaid) === 0 && Number(editingDoc.amountCredited) === 0 && (
+              <div style={{ display: "flex", gap: 8 }}>
+                {!readOnly && editingDoc && (editingDoc.status === "DRAFT" || editingDoc.status === "SUBMITTED") && (
+                  <button className="x-btn x-btn-danger" onClick={() => handleDeleteInvoice(editingDoc)}>
+                    <Trash2 size={14} /> Delete Draft
+                  </button>
+                )}
+                {!readOnly && editingDoc && editingDoc.status === "AUTHORISED" && Number(editingDoc.amountPaid) === 0 && Number(editingDoc.amountCredited) === 0 && (
                   <button className="x-btn x-btn-danger" onClick={handleVoidExisting}><Ban size={14} /> Void</button>
+                )}
+                {!readOnly && editingQuoteOrPo && editingQuoteOrPo.status !== "INVOICED" && editingQuoteOrPo.status !== "BILLED" && (
+                  <button
+                    className="x-btn x-btn-danger"
+                    onClick={() =>
+                      editingQuoteOrPo.kind === "QUOTE"
+                        ? handleDeleteQuote(editingQuoteOrPo.id, editingQuoteOrPo.docNumber)
+                        : handleDeletePo(editingQuoteOrPo.id, editingQuoteOrPo.docNumber)
+                    }
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                {(!editingDoc || editingDoc.status === "DRAFT") && (
+                {!readOnly && editingQuoteOrPo && editingQuoteOrPo.status !== "INVOICED" && editingQuoteOrPo.status !== "BILLED" && (
+                  <button className="x-btn x-btn-primary" onClick={() => handleSaveDoc(false)}>Save Changes</button>
+                )}
+                {!readOnly && !editingQuoteOrPo && (!editingDoc || editingDoc.status === "DRAFT" || editingDoc.status === "SUBMITTED") && (
                   <>
-                    <button className="x-btn" onClick={() => (editingDoc ? handleSaveDoc(false) : handleSaveDoc(false))}>Save as Draft</button>
+                    <button className="x-btn" onClick={() => handleSaveDoc(false)}>Save as Draft</button>
                     <button className="x-btn x-btn-green" onClick={() => (editingDoc ? handleApproveExisting() : handleSaveDoc(true))}>
                       <Check size={14} /> Approve
                     </button>
                   </>
                 )}
-                {editingDoc && editingDoc.status === "AUTHORISED" && editingDoc.invoiceType.endsWith("CREDIT") && Number(editingDoc.amountDue) > 0 && (
+                {!readOnly && editingDoc && editingDoc.status === "AUTHORISED" && Number(editingDoc.amountPaid) === 0 && Number(editingDoc.amountCredited) === 0 && (
+                  editUnlocked ? (
+                    <>
+                      <button className="x-btn" onClick={() => openExistingDoc(editingDoc)}>Cancel Edit</button>
+                      <button className="x-btn x-btn-green" onClick={() => handleSaveDoc(false)}>Save Changes</button>
+                    </>
+                  ) : (
+                    <button className="x-btn" onClick={() => setEditUnlocked(true)}>Edit Document</button>
+                  )
+                )}
+                {!readOnly && !editUnlocked && editingDoc && editingDoc.status === "AUTHORISED" && editingDoc.invoiceType.endsWith("CREDIT") && Number(editingDoc.amountDue) > 0 && (
                   <button className="x-btn x-btn-primary" onClick={openCreditAllocation}>Allocate Credit Balance</button>
                 )}
                 <button className="x-btn" onClick={() => setEditorOpen(false)}>Close</button>

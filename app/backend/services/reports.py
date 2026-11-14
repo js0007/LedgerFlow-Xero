@@ -895,7 +895,11 @@ def apply_find_and_recode(
     with atomic_tx(conn):
         for jlid in journal_line_ids:
             jl = conn.execute(
-                "SELECT jl.*, j.journal_date, j.source_id FROM journal_lines jl JOIN journals j ON j.id = jl.journal_id WHERE jl.id = ? AND jl.org_id = ?",
+                """
+                SELECT jl.*, j.journal_date, j.source_id, j.source_type, j.show_on_cash_basis
+                FROM journal_lines jl JOIN journals j ON j.id = jl.journal_id
+                WHERE jl.id = ? AND jl.org_id = ?
+                """,
                 (jlid, org_id),
             ).fetchone()
             if jl is None:
@@ -917,6 +921,7 @@ def apply_find_and_recode(
                     "tax_rate_id": jl["tax_rate_id"], "tax_type_code": jl["tax_type_code"],
                     "gross_cents": -int(jl["gross_cents"]), "net_cents": -int(jl["net_cents"]), "tax_cents": -int(jl["tax_cents"]),
                     "tracking_1_option_id": jl["tracking_1_option_id"],
+                    "tracking_2_option_id": jl["tracking_2_option_id"],
                 },
                 {
                     "account_id": dest_acc, "contact_id": jl["contact_id"],
@@ -925,12 +930,19 @@ def apply_find_and_recode(
                     "tax_rate_id": jl["tax_rate_id"], "tax_type_code": jl["tax_type_code"],
                     "gross_cents": int(jl["gross_cents"]), "net_cents": int(jl["net_cents"]), "tax_cents": int(jl["tax_cents"]),
                     "tracking_1_option_id": new_tracking1_id if new_tracking1_id is not None else jl["tracking_1_option_id"],
+                    "tracking_2_option_id": jl["tracking_2_option_id"],
                 },
             ]
+            # Preserve cash-basis visibility ONLY for actual cash-basis sources (never leak unpaid ACCREC/ACCPAY invoices!)
+            recode_cash = bool(
+                int(jl["show_on_cash_basis"]) == 1
+                and jl["source_type"] in ("CASHREC", "CASHREC_REVERSAL", "CASHPAID", "CASHPAID_REVERSAL", "MANJOURNAL", "MANJOURNAL_REVERSAL", "RECODE", "RECODE_REVERSAL")
+            )
             post_journal(
                 conn, org_id=org_id, journal_date=jl["journal_date"], source_type="RECODE",
                 source_id=batch_id, reference=f"RECODE-{batch_id[:6].upper()}",
                 narration="Find & Recode reclassification", lines=lines, actor_user_id=actor_user_id,
+                show_on_cash_basis=recode_cash,
             )
             affected += 1
             dates.append(jl["journal_date"])

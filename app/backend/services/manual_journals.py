@@ -16,6 +16,7 @@ from .ledger import (
     parse_iso_date,
     post_journal,
     reverse_journal,
+    signed_tax_line_amounts,
     write_audit,
 )
 
@@ -135,7 +136,13 @@ def _build_gl_lines_from_mj(
             continue
         is_debit = p["debit_cents"] > 0
         net_val = p["net_cents"]
-        sign = 1 if (not is_debit) else -1  # revenue/output is positive credit; input/expense debit
+        s_gross, s_net, s_tax = signed_tax_line_amounts(
+            p["tax_type_code"],
+            is_credit=not is_debit,
+            gross_cents=p["gross_cents"],
+            net_cents=net_val,
+            tax_cents=p["tax_cents"],
+        )
 
         gl_lines.append(
             {
@@ -145,9 +152,9 @@ def _build_gl_lines_from_mj(
                 "credit_cents": net_val if not is_debit else 0,
                 "tax_rate_id": p["tax_rate_id"],
                 "tax_type_code": p["tax_type_code"],
-                "gross_cents": p["gross_cents"] if is_debit else p["gross_cents"],
-                "net_cents": net_val,
-                "tax_cents": p["tax_cents"],
+                "gross_cents": s_gross,
+                "net_cents": s_net,
+                "tax_cents": s_tax,
                 "tracking_1_option_id": p["tracking_1_option_id"],
                 "tracking_2_option_id": p["tracking_2_option_id"],
             }

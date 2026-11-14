@@ -135,21 +135,29 @@ def get_dashboard(org_id: str):
 
     ar_row = conn.execute(
         """
-        SELECT COUNT(*) AS cnt,
-               COALESCE(SUM(total_cents - amount_paid_cents - amount_credited_cents), 0) AS due_cents,
-               COALESCE(SUM(CASE WHEN due_date < ? THEN total_cents - amount_paid_cents - amount_credited_cents ELSE 0 END), 0) AS overdue_cents,
-               COUNT(CASE WHEN due_date < ? THEN 1 END) AS overdue_cnt
-        FROM invoices WHERE org_id = ? AND invoice_type = 'ACCREC' AND status = 'AUTHORISED'
+        SELECT COUNT(CASE WHEN invoice_type = 'ACCREC' THEN 1 END) AS cnt,
+               COALESCE(SUM(
+                   CASE WHEN invoice_type = 'ACCREC' THEN (total_cents - amount_paid_cents - amount_credited_cents)
+                        WHEN invoice_type = 'ACCRECCREDIT' THEN -(total_cents - amount_paid_cents - amount_credited_cents)
+                        ELSE 0 END
+               ), 0) AS due_cents,
+               COALESCE(SUM(CASE WHEN invoice_type = 'ACCREC' AND due_date < ? THEN total_cents - amount_paid_cents - amount_credited_cents ELSE 0 END), 0) AS overdue_cents,
+               COUNT(CASE WHEN invoice_type = 'ACCREC' AND due_date < ? THEN 1 END) AS overdue_cnt
+        FROM invoices WHERE org_id = ? AND invoice_type IN ('ACCREC', 'ACCRECCREDIT') AND status = 'AUTHORISED'
         """,
         (today_str, today_str, org_id),
     ).fetchone()
     ap_row = conn.execute(
         """
-        SELECT COUNT(*) AS cnt,
-               COALESCE(SUM(total_cents - amount_paid_cents - amount_credited_cents), 0) AS due_cents,
-               COALESCE(SUM(CASE WHEN due_date < ? THEN total_cents - amount_paid_cents - amount_credited_cents ELSE 0 END), 0) AS overdue_cents,
-               COUNT(CASE WHEN due_date < ? THEN 1 END) AS overdue_cnt
-        FROM invoices WHERE org_id = ? AND invoice_type = 'ACCPAY' AND status = 'AUTHORISED'
+        SELECT COUNT(CASE WHEN invoice_type = 'ACCPAY' THEN 1 END) AS cnt,
+               COALESCE(SUM(
+                   CASE WHEN invoice_type = 'ACCPAY' THEN (total_cents - amount_paid_cents - amount_credited_cents)
+                        WHEN invoice_type = 'ACCPAYCREDIT' THEN -(total_cents - amount_paid_cents - amount_credited_cents)
+                        ELSE 0 END
+               ), 0) AS due_cents,
+               COALESCE(SUM(CASE WHEN invoice_type = 'ACCPAY' AND due_date < ? THEN total_cents - amount_paid_cents - amount_credited_cents ELSE 0 END), 0) AS overdue_cents,
+               COUNT(CASE WHEN invoice_type = 'ACCPAY' AND due_date < ? THEN 1 END) AS overdue_cnt
+        FROM invoices WHERE org_id = ? AND invoice_type IN ('ACCPAY', 'ACCPAYCREDIT') AND status = 'AUTHORISED'
         """,
         (today_str, today_str, org_id),
     ).fetchone()
@@ -369,7 +377,8 @@ def create_account(org_id: str):
     uid, uname, role = get_actor(conn, org_id)
     assert_can_write(role)
     body = request.get_json(force=True)
-    acc_type = (body.get("accountType") or "EXPENSE").upper()
+    raw_type = (body.get("accountType") or "EXPENSE").upper()
+    acc_type = "EXPENSE" if raw_type == "OVERHEADS" else raw_type
     class_for_type = {
         "BANK": "ASSET", "CURRENT": "ASSET", "INVENTORY": "ASSET", "FIXED": "ASSET",
         "CURRLIAB": "LIABILITY", "TERMLIAB": "LIABILITY", "EQUITY": "EQUITY",
@@ -419,16 +428,17 @@ def update_account(org_id: str, account_id: str):
     if int(acc["is_system_locked"]) == 1 and body.get("status") == "ARCHIVED":
         raise ApiError(422, "SYSTEM_ACCOUNT_LOCKED", "System-locked accounts cannot be archived.")
     with atomic_tx(conn):
+        new_tax_rate_id = (body.get("defaultTaxRateId") or None) if "defaultTaxRateId" in body else acc["default_tax_rate_id"]
         conn.execute(
             """
             UPDATE accounts SET name=COALESCE(?, name), description=COALESCE(?, description),
-            default_tax_rate_id=COALESCE(?, default_tax_rate_id),
+            default_tax_rate_id=?,
             enable_payments_to_account=COALESCE(?, enable_payments_to_account),
             show_on_watchlist=COALESCE(?, show_on_watchlist),
             status=COALESCE(?, status) WHERE id=? AND org_id=?
             """,
             (
-                body.get("name"), body.get("description"), body.get("defaultTaxRateId"),
+                body.get("name"), body.get("description"), new_tax_rate_id,
                 (1 if body["enablePaymentsToAccount"] else 0) if "enablePaymentsToAccount" in body else None,
                 (1 if body["showOnWatchlist"] else 0) if "showOnWatchlist" in body else None,
                 body.get("status"), account_id, org_id,
@@ -569,21 +579,86 @@ def create_product(org_id: str):
     uid, uname, role = get_actor(conn, org_id)
     assert_can_write(role)
     body = request.get_json(force=True)
+    code = (body.get("code") or "").strip()
+    name = (body.get("name") or "").strip()
+    if not code or not name:
+        raise ApiError(422, "PRODUCT_FIELDS_REQUIRED", "Product code and name are required.")
     pid = new_id()
     with atomic_tx(conn):
-        conn.execute(
-            """
-            INSERT INTO products (id, org_id, code, name, is_tracked, cost_price_decimal, purchase_account_id, purchase_tax_rate_id, sale_price_decimal, sales_account_id, sales_tax_rate_id, status, created_at)
-            VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
-            """,
-            (
-                pid, org_id, body["code"].strip(), body["name"].strip(),
-                body.get("costPrice"), body.get("purchaseAccountId"), body.get("purchaseTaxRateId"),
-                body.get("salePrice"), body.get("salesAccountId"), body.get("salesTaxRateId"), utc_now_iso(),
-            ),
-        )
-        write_audit(conn, org_id, uid, uname, "PRODUCT", pid, "CREATED", f"Product/service '{body['code']}' created.")
-    return jsonify({"id": pid, "code": body["code"], "name": body["name"]}), 201
+        try:
+            conn.execute(
+                """
+                INSERT INTO products (id, org_id, code, name, is_tracked, cost_price_decimal, purchase_account_id, purchase_tax_rate_id, sale_price_decimal, sales_account_id, sales_tax_rate_id, status, created_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+                """,
+                (
+                    pid, org_id, code, name,
+                    body.get("costPrice"), body.get("purchaseAccountId"), body.get("purchaseTaxRateId"),
+                    body.get("salePrice"), body.get("salesAccountId"), body.get("salesTaxRateId"), utc_now_iso(),
+                ),
+            )
+        except Exception as exc:
+            raise ApiError(409, "DUPLICATE_PRODUCT_CODE", f"Product code '{code}' already exists.") from exc
+        write_audit(conn, org_id, uid, uname, "PRODUCT", pid, "CREATED", f"Product/service '{code}' created.")
+    return jsonify({"id": pid, "code": code, "name": name}), 201
+
+
+@core_bp.patch("/orgs/<org_id>/products/<product_id>")
+def update_product(org_id: str, product_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    assert_can_write(role)
+    prod = conn.execute("SELECT * FROM products WHERE id = ? AND org_id = ?", (product_id, org_id)).fetchone()
+    if prod is None:
+        raise ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.")
+    body = request.get_json(force=True)
+    new_code = (body.get("code") or prod["code"]).strip()
+    new_name = (body.get("name") or prod["name"]).strip()
+    if not new_code or not new_name:
+        raise ApiError(422, "PRODUCT_FIELDS_REQUIRED", "Product code and name cannot be empty.")
+    with atomic_tx(conn):
+        try:
+            conn.execute(
+                """
+                UPDATE products
+                SET code = ?, name = ?,
+                    cost_price_decimal = ?, purchase_account_id = ?, purchase_tax_rate_id = ?,
+                    sale_price_decimal = ?, sales_account_id = ?, sales_tax_rate_id = ?,
+                    status = ?
+                WHERE id = ? AND org_id = ?
+                """,
+                (
+                    new_code,
+                    new_name,
+                    body.get("costPrice", prod["cost_price_decimal"]) if "costPrice" in body else prod["cost_price_decimal"],
+                    (body.get("purchaseAccountId") or None) if "purchaseAccountId" in body else prod["purchase_account_id"],
+                    (body.get("purchaseTaxRateId") or None) if "purchaseTaxRateId" in body else prod["purchase_tax_rate_id"],
+                    body.get("salePrice", prod["sale_price_decimal"]) if "salePrice" in body else prod["sale_price_decimal"],
+                    (body.get("salesAccountId") or None) if "salesAccountId" in body else prod["sales_account_id"],
+                    (body.get("salesTaxRateId") or None) if "salesTaxRateId" in body else prod["sales_tax_rate_id"],
+                    (body.get("status") or prod["status"]).upper(),
+                    product_id,
+                    org_id,
+                ),
+            )
+        except Exception as exc:
+            raise ApiError(409, "DUPLICATE_PRODUCT_CODE", f"Product code '{new_code}' already exists.") from exc
+        write_audit(conn, org_id, uid, uname, "PRODUCT", product_id, "UPDATED", f"Product '{new_code}' updated.")
+    return jsonify({"id": product_id, "code": new_code, "name": new_name})
+
+
+@core_bp.delete("/orgs/<org_id>/products/<product_id>")
+def archive_product(org_id: str, product_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    assert_can_write(role)
+    prod = conn.execute("SELECT * FROM products WHERE id = ? AND org_id = ?", (product_id, org_id)).fetchone()
+    if prod is None:
+        raise ApiError(404, "PRODUCT_NOT_FOUND", "Product not found.")
+    with atomic_tx(conn):
+        conn.execute("UPDATE products SET status = 'ARCHIVED' WHERE id = ? AND org_id = ?", (product_id, org_id))
+        write_audit(conn, org_id, uid, uname, "PRODUCT", product_id, "ARCHIVED", f"Product '{prod['code']}' archived.")
+    return jsonify({"archived": True})
 
 
 @core_bp.get("/orgs/<org_id>/contacts")

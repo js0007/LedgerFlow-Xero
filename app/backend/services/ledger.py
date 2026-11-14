@@ -9,6 +9,39 @@ from typing import Any, Iterable
 
 from ..db import ApiError, new_id, utc_now_iso
 
+OUTPUT_TAX_CODES = {"OUTPUT", "EXEMPTOUTPUT", "EXEMPTEXPORT"}
+INPUT_TAX_CODES = {
+    "INPUT",
+    "EXEMPTEXPENSES",
+    "EXEMPTCAPITAL",
+    "CAPEXINPUT",
+    "GSTONIMPORTS",
+    "GSTONCAPIMPORTS",
+}
+
+
+def signed_tax_line_amounts(
+    tax_type_code: str | None,
+    *,
+    is_credit: bool,
+    gross_cents: int,
+    net_cents: int,
+    tax_cents: int,
+) -> tuple[int, int, int]:
+    """Return BAS-signed (gross_cents, net_cents, tax_cents) from natural side of tax code.
+
+    Output/sales codes are naturally Credits (+ on credit, - on debit);
+    Input/purchase codes are naturally Debits (+ on debit, - on credit).
+    """
+    code = (tax_type_code or "").upper()
+    if code in OUTPUT_TAX_CODES:
+        sign = 1 if is_credit else -1
+    elif code in INPUT_TAX_CODES:
+        sign = -1 if is_credit else 1
+    else:
+        sign = 1
+    return sign * int(gross_cents), sign * int(net_cents), sign * int(tax_cents)
+
 
 def parse_iso_date(date_str: str) -> date:
     try:

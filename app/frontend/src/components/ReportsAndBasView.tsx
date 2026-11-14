@@ -209,11 +209,23 @@ interface Props {
 
 export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: Props) {
   const canWrite = role !== "READONLY";
-  const today = new Date().toISOString().slice(0, 10);
+  const nowDt = new Date();
+  const today = nowDt.toISOString().slice(0, 10);
+  const auMonth = nowDt.getUTCMonth() + 1;
+  const auYr = nowDt.getUTCFullYear();
+  const fyStartYear = auMonth >= 7 ? auYr : auYr - 1;
+  const fyShort = String(fyStartYear + 1).slice(-2);
+  const auQuarters = [
+    { label: `Q1 FY${fyShort} (Jul–Sep ${fyStartYear})`, from: `${fyStartYear}-07-01`, to: `${fyStartYear}-09-30` },
+    { label: `Q2 FY${fyShort} (Oct–Dec ${fyStartYear})`, from: `${fyStartYear}-10-01`, to: `${fyStartYear}-12-31` },
+    { label: `Q3 FY${fyShort} (Jan–Mar ${fyStartYear + 1})`, from: `${fyStartYear + 1}-01-01`, to: `${fyStartYear + 1}-03-31` },
+    { label: `Q4 FY${fyShort} (Apr–Jun ${fyStartYear + 1})`, from: `${fyStartYear + 1}-04-01`, to: `${fyStartYear + 1}-06-30` },
+  ];
+  const currentQuarter = auQuarters.find((q) => today >= q.from && today <= q.to) || auQuarters[1];
 
-  const [fromDate, setFromDate] = useState("2026-07-01");
-  const [toDate, setToDate] = useState(today < "2026-12-31" ? "2027-06-30" : today);
-  const [asOfDate, setAsOfDate] = useState(today < "2026-11-30" ? "2026-12-31" : today);
+  const [fromDate, setFromDate] = useState(`${fyStartYear}-07-01`);
+  const [toDate, setToDate] = useState(`${fyStartYear + 1}-06-30`);
+  const [asOfDate, setAsOfDate] = useState(currentQuarter.to);
   const [pnlBasis, setPnlBasis] = useState<"ACCRUAL" | "CASH">("ACCRUAL");
   const [trackingOptId, setTrackingOptId] = useState("");
   const [agingBy, setAgingBy] = useState<"DUE_DATE" | "ISSUE_DATE">("DUE_DATE");
@@ -221,8 +233,8 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
   const [accFilterId, setAccFilterId] = useState("");
 
   // AU BAS Quarter defaults
-  const [basFrom, setBasFrom] = useState("2026-10-01");
-  const [basTo, setBasTo] = useState("2026-12-31");
+  const [basFrom, setBasFrom] = useState(currentQuarter.from);
+  const [basTo, setBasTo] = useState(currentQuarter.to);
 
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [tracking, setTracking] = useState<TrackingCategory[]>([]);
@@ -540,11 +552,38 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
             <div className="x-breadcrumb">Reports &gt; Balance Sheet</div>
             <h1 className="x-page-title">Balance Sheet</h1>
           </div>
-          {bs && (
-            <span className={`x-badge ${bs.totals.isBalanced ? "green" : "red"}`}>
-              {bs.totals.isBalanced ? "Assets - Liabilities = Equity (Balanced)" : "Out of Balance"}
-            </span>
-          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {bs && (
+              <>
+                <span className={`x-badge ${bs.totals.isBalanced ? "green" : "red"}`}>
+                  {bs.totals.isBalanced ? "Assets - Liabilities = Equity (Balanced)" : "Out of Balance"}
+                </span>
+                <button
+                  className="x-btn"
+                  onClick={() =>
+                    exportSimpleCsv(
+                      `balance-sheet-${bs.asOfDate}.csv`,
+                      ["Section", "Account Code", "Account Name", "Amount AUD"],
+                      [
+                        ...bs.sections.bank.map((r) => ["Bank", r.code || "", r.name, r.amount]),
+                        ...bs.sections.currentAssets.map((r) => ["Current Assets", r.code || "", r.name, r.amount]),
+                        ...bs.sections.fixedAssets.map((r) => ["Fixed Assets", r.code || "", r.name, r.amount]),
+                        ["Total Assets", "", "", bs.totals.totalAssets],
+                        ...bs.sections.currentLiabilities.map((r) => ["Current Liabilities", r.code || "", r.name, r.amount]),
+                        ...bs.sections.nonCurrentLiabilities.map((r) => ["Non-current Liabilities", r.code || "", r.name, r.amount]),
+                        ["Total Liabilities", "", "", bs.totals.totalLiabilities],
+                        ["Net Assets", "", "", bs.totals.netAssets],
+                        ...bs.sections.equity.map((r) => ["Equity", r.code || "", r.name, r.amount]),
+                        ["Total Equity", "", "", bs.totals.totalEquity],
+                      ]
+                    )
+                  }
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <main className="x-main">
           <div className="x-card" style={{ marginBottom: 16 }}>
@@ -665,11 +704,30 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
             <div className="x-breadcrumb">Reports &gt; Trial Balance</div>
             <h1 className="x-page-title">Trial Balance</h1>
           </div>
-          {tb && (
-            <span className={`x-badge ${tb.isBalanced ? "green" : "red"}`}>
-              {tb.isBalanced ? "Debits = Credits (Balanced)" : "Imbalanced"}
-            </span>
-          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {tb && (
+              <>
+                <span className={`x-badge ${tb.isBalanced ? "green" : "red"}`}>
+                  {tb.isBalanced ? "Debits = Credits (Balanced)" : "Imbalanced"}
+                </span>
+                <button
+                  className="x-btn"
+                  onClick={() =>
+                    exportSimpleCsv(
+                      `trial-balance-${asOfDate}.csv`,
+                      ["Code", "Account", "Account Type", "YTD Debit", "YTD Credit", "Debit Balance", "Credit Balance"],
+                      [
+                        ...tb.rows.map((r) => [r.code || "", r.name, r.accountType, r.ytdDebit, r.ytdCredit, r.debit, r.credit]),
+                        ["", "Total", "", "", "", tb.totalDebit, tb.totalCredit],
+                      ]
+                    )
+                  }
+                >
+                  <Download size={14} /> Export CSV
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <main className="x-main">
           <div className="x-card" style={{ marginBottom: 16 }}>
@@ -880,6 +938,23 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
             <div className="x-breadcrumb">Reports &gt; {isAr ? "Aged Receivables" : "Aged Payables"}</div>
             <h1 className="x-page-title">{isAr ? "Aged Receivables Summary & Detail" : "Aged Payables Summary & Detail"}</h1>
           </div>
+          {aged && (
+            <button
+              className="x-btn"
+              onClick={() =>
+                exportSimpleCsv(
+                  `${isAr ? "aged-receivables" : "aged-payables"}-${asOfDate}.csv`,
+                  ["Contact", "Current", "< 1 Month", "1 Month", "2 Months", "3 Months", "Older", "Total"],
+                  [
+                    ...aged.rows.map((r) => [r.contactName, r.current, r.lt1m, r.m1, r.m2, r.m3, r.older, r.total]),
+                    ["Total", aged.totals.current, aged.totals.lt1m, aged.totals.m1, aged.totals.m2, aged.totals.m3, aged.totals.older, aged.totals.total],
+                  ]
+                )
+              }
+            >
+              <Download size={14} /> Export CSV
+            </button>
+          )}
         </div>
         <main className="x-main">
           <div className="x-card" style={{ marginBottom: 14 }}>
@@ -982,8 +1057,12 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
                 key={d}
                 className={`x-btn ${cfDays === d ? "x-btn-primary" : ""}`}
                 onClick={async () => {
-                  setCfDays(d);
-                  setCashFlow(await api.get<CashFlowData>(`/orgs/${orgId}/analytics/cash-flow?days=${d}`));
+                  try {
+                    setCfDays(d);
+                    setCashFlow(await api.get<CashFlowData>(`/orgs/${orgId}/analytics/cash-flow?days=${d}`));
+                  } catch (e) {
+                    onToast("error", (e as Error).message);
+                  }
                 }}
               >
                 Next {d} days
@@ -1072,6 +1151,28 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
           </h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          {bas && (
+            <button
+              className="x-btn"
+              onClick={() =>
+                exportSimpleCsv(
+                  `simpler-bas-${bas.periodStart}-to-${bas.periodEnd}.csv`,
+                  ["Label / Date", "Journal #", "Source", "Description", "Tax Rate", "Net AUD", "GST AUD", "Gross AUD"],
+                  [
+                    ["G1 Total Sales", "", "", bas.g1Mode, "", bas.labels.G1, "", ""],
+                    ["G10 Capital Purchases", "", "", "", "", bas.labels.G10, "", ""],
+                    ["G11 Non-capital Purchases", "", "", "", "", bas.labels.G11, "", ""],
+                    ["1A GST on Sales", "", "", "", "", "", bas.labels["1A"], ""],
+                    ["1B GST on Purchases", "", "", "", "", "", bas.labels["1B"], ""],
+                    ["Label 9 Net ATO Payment/(Refund)", "", "", "", "", "", bas.labels.Payment9, ""],
+                    ...bas.transactions.map((t) => [t.date, t.journalNumber, t.sourceType, t.description, t.taxName, t.netAmount, t.taxAmount, t.grossAmount]),
+                  ]
+                )
+              }
+            >
+              <Download size={14} /> Export CSV
+            </button>
+          )}
           {bas && bas.status === "DRAFT" && canWrite && (
             <button className="x-btn x-btn-green" onClick={finaliseBas}>
               <CheckCircle2 size={15} /> Finalise BAS Statement
@@ -1096,10 +1197,9 @@ export function ReportsAndBasView({ orgId, route, role, onNavigate, onToast }: P
                   }
                 }}
               >
-                <option value="2026-07-01|2026-09-30">Q1 FY27 (Jul–Sep 2026)</option>
-                <option value="2026-10-01|2026-12-31">Q2 FY27 (Oct–Dec 2026)</option>
-                <option value="2027-01-01|2027-03-31">Q3 FY27 (Jan–Mar 2027)</option>
-                <option value="2027-04-01|2027-06-30">Q4 FY27 (Apr–Jun 2027)</option>
+                {auQuarters.map((q) => (
+                  <option key={q.from} value={`${q.from}|${q.to}`}>{q.label}</option>
+                ))}
               </select>
             </div>
             <div className="x-field">

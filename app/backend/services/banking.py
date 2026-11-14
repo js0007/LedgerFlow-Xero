@@ -8,6 +8,7 @@ import io
 import json
 import sqlite3
 from collections import Counter
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
@@ -22,6 +23,7 @@ from .ledger import (
     parse_iso_date,
     post_journal,
     reverse_journal,
+    signed_tax_line_amounts,
     write_audit,
 )
 
@@ -287,10 +289,28 @@ def get_reconciliation_suggestions(conn: sqlite3.Connection, org_id: str, bank_a
         (org_id, bank_account_id),
     ).fetchall()
 
-    # Sibling bank accounts for transfer suggestions
+    # Sibling bank accounts & open unlinked inter-bank transfers for transfer suggestions
     other_banks = conn.execute(
         "SELECT id, name FROM accounts WHERE org_id = ? AND account_type = 'BANK' AND id != ? AND status = 'ACTIVE'",
         (org_id, bank_account_id),
+    ).fetchall()
+    open_transfers = conn.execute(
+        """
+        SELECT bt.*, fa.name AS from_bank_name, ta.name AS to_bank_name
+        FROM bank_transactions bt
+        JOIN accounts fa ON fa.id = bt.bank_account_id
+        JOIN accounts ta ON ta.id = bt.transfer_account_id
+        WHERE bt.org_id = ? AND bt.tx_type = 'TRANSFER' AND bt.status = 'AUTHORISED'
+          AND (bt.bank_account_id = ? OR bt.transfer_account_id = ?)
+          AND NOT EXISTS (
+              SELECT 1 FROM bank_statement_lines s
+              WHERE s.org_id = bt.org_id AND s.bank_account_id = ?
+                AND s.reconcile_status = 'RECONCILED'
+                AND s.matched_entity_type = 'BANK_TRANSACTION'
+                AND s.matched_entity_id = bt.id
+          )
+        """,
+        (org_id, bank_account_id, bank_account_id, bank_account_id),
     ).fetchall()
 
     stmt_items = []
@@ -304,7 +324,7 @@ def get_reconciliation_suggestions(conn: sqlite3.Connection, org_id: str, bank_a
         # 1. Existing un-reconciled Payment match
         matched_payment = None
         for p in unrec_payments:
-            p_signed = int(p["amount_cents"]) if p["invoice_type"] == "ACCREC" else -int(p["amount_cents"])
+            p_signed = int(p["amount_cents"]) if p["invoice_type"] in ("ACCREC", "ACCPAYCREDIT") else -int(p["amount_cents"])
             if p_signed == amt:
                 matched_payment = {
                     "paymentId": p["id"],
@@ -316,9 +336,27 @@ def get_reconciliation_suggestions(conn: sqlite3.Connection, org_id: str, bank_a
                 }
                 break
 
+        # 1b. Existing open Inter-Bank Transfer match
+        matched_transfer = None
+        if matched_payment is None:
+            for trf in open_transfers:
+                expected_signed = int(trf["total_cents"]) if trf["transfer_account_id"] == bank_account_id else -int(trf["total_cents"])
+                if expected_signed == amt:
+                    matched_transfer = {
+                        "bankTxId": trf["id"],
+                        "fromBankAccountId": trf["bank_account_id"],
+                        "fromBankName": trf["from_bank_name"],
+                        "toBankAccountId": trf["transfer_account_id"],
+                        "toBankName": trf["to_bank_name"],
+                        "txDate": trf["tx_date"],
+                        "amount": decimal_str_from_cents(trf["total_cents"]),
+                        "reference": trf["reference"],
+                    }
+                    break
+
         # 2. Open Invoice/Bill match
         matched_doc = None
-        if matched_payment is None:
+        if matched_payment is None and matched_transfer is None:
             for d in open_docs:
                 if d["invoice_type"] != expected_doc_type:
                     continue
@@ -363,6 +401,8 @@ def get_reconciliation_suggestions(conn: sqlite3.Connection, org_id: str, bank_a
         suggestion_type = "NONE"
         if matched_payment:
             suggestion_type = "MATCH_EXISTING_PAYMENT"
+        elif matched_transfer:
+            suggestion_type = "MATCH_EXISTING_TRANSFER"
         elif matched_doc:
             suggestion_type = "MATCH_INVOICE"
         elif matched_rule:
@@ -383,6 +423,7 @@ def get_reconciliation_suggestions(conn: sqlite3.Connection, org_id: str, bank_a
                 "version": l["version"],
                 "suggestionType": suggestion_type,
                 "matchedPayment": matched_payment,
+                "matchedTransfer": matched_transfer,
                 "matchedDocument": matched_doc,
                 "matchedRule": matched_rule,
             }
@@ -487,20 +528,26 @@ def _create_bank_tx_core(
     if tx_type == "RECEIVE":
         gl_lines.append({"account_id": bank_account_id, "contact_id": payload.get("contactId"), "description": payload.get("reference") or "Receive Money", "debit_cents": total_gross, "credit_cents": 0})
         for p in prepared_lines:
+            s_gross, s_net, s_tax = signed_tax_line_amounts(
+                p["tax_type_code"], is_credit=True, gross_cents=p["gross_cents"], net_cents=p["net_cents"], tax_cents=p["tax_cents"]
+            )
             gl_lines.append({
                 "account_id": p["account_id"], "contact_id": payload.get("contactId"), "description": p["description"],
                 "debit_cents": 0, "credit_cents": p["net_cents"], "tax_rate_id": p["tax_rate_id"], "tax_type_code": p["tax_type_code"],
-                "gross_cents": p["gross_cents"], "net_cents": p["net_cents"], "tax_cents": p["tax_cents"],
+                "gross_cents": s_gross, "net_cents": s_net, "tax_cents": s_tax,
                 "tracking_1_option_id": p["tracking_1_option_id"], "tracking_2_option_id": p["tracking_2_option_id"],
             })
         if total_tax > 0:
             gl_lines.append({"account_id": gst_acc["id"], "description": "GST on Receive Money", "debit_cents": 0, "credit_cents": total_tax})
     else:
         for p in prepared_lines:
+            s_gross, s_net, s_tax = signed_tax_line_amounts(
+                p["tax_type_code"], is_credit=False, gross_cents=p["gross_cents"], net_cents=p["net_cents"], tax_cents=p["tax_cents"]
+            )
             gl_lines.append({
                 "account_id": p["account_id"], "contact_id": payload.get("contactId"), "description": p["description"],
                 "debit_cents": p["net_cents"], "credit_cents": 0, "tax_rate_id": p["tax_rate_id"], "tax_type_code": p["tax_type_code"],
-                "gross_cents": p["gross_cents"], "net_cents": p["net_cents"], "tax_cents": p["tax_cents"],
+                "gross_cents": s_gross, "net_cents": s_net, "tax_cents": s_tax,
                 "tracking_1_option_id": p["tracking_1_option_id"], "tracking_2_option_id": p["tracking_2_option_id"],
             })
         if total_tax > 0:
@@ -530,6 +577,35 @@ def _create_bank_tx_core(
     return tx_id, jid, jnum
 
 
+def _parse_matched_ids(raw_json: str | None, fallback_id: str | None) -> tuple[list[str], str | None]:
+    """Decode matched_entity_ids_json supporting legacy list[str] or dict{paymentIds, adjustmentBankTxId}."""
+    if not raw_json:
+        return ([fallback_id] if fallback_id else []), None
+    parsed = json.loads(raw_json)
+    if isinstance(parsed, dict):
+        pids = list(parsed.get("paymentIds") or ([fallback_id] if fallback_id else []))
+        return pids, parsed.get("adjustmentBankTxId")
+    if isinstance(parsed, list):
+        return (list(parsed) or ([fallback_id] if fallback_id else [])), None
+    return ([fallback_id] if fallback_id else []), None
+
+
+def _reverse_bank_tx_row(conn: sqlite3.Connection, org_id: str, btx: sqlite3.Row, actor_user_id: str, narration: str) -> None:
+    """Append-only reverse one AUTHORISED bank_transaction and mark it DELETED."""
+    src_rev = {"RECEIVE": "CASHREC_REVERSAL", "SPEND": "CASHPAID_REVERSAL", "TRANSFER": "TRANSFER_REVERSAL"}[btx["tx_type"]]
+    rev_jid, _ = reverse_journal(
+        conn,
+        org_id=org_id,
+        original_journal_id=btx["journal_id"],
+        reversal_date=btx["tx_date"],
+        source_type=src_rev,
+        source_id=btx["id"],
+        narration=narration,
+        actor_user_id=actor_user_id,
+    )
+    conn.execute("UPDATE bank_transactions SET status='DELETED', is_reconciled=0, reversal_journal_id=? WHERE id=?", (rev_jid, btx["id"]))
+
+
 def reconcile_statement_line(
     conn: sqlite3.Connection,
     *,
@@ -540,28 +616,31 @@ def reconcile_statement_line(
     actor_name: str,
     actor_role: str,
 ) -> dict[str, Any]:
-    """Atomically reconcile one statement line via MATCH_INVOICE, MATCH_EXISTING_PAYMENT, CREATE_BANK_TX, or TRANSFER."""
+    """Atomically reconcile one statement line via MATCH_INVOICE, MATCH_EXISTING_PAYMENT, MATCH_TRANSFER, CREATE_BANK_TX, or TRANSFER."""
     assert_can_write(actor_role)
     stmt_id = payload.get("statementLineId")
     expected_version = payload.get("version")
     action = (payload.get("action") or "").upper()
+    if not stmt_id or not action:
+        raise ApiError(422, "MISSING_FIELDS", "statementLineId and action are required.")
 
-    stmt = conn.execute(
-        "SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?",
-        (stmt_id, org_id, bank_account_id),
-    ).fetchone()
-    if stmt is None:
-        raise ApiError(404, "STATEMENT_LINE_NOT_FOUND", "Bank statement line not found.")
-    if stmt["reconcile_status"] != "UNRECONCILED":
-        raise ApiError(409, "ALREADY_RECONCILED", "This bank statement line has already been reconciled.")
-    if expected_version is not None and int(stmt["version"]) != int(expected_version):
-        raise ApiError(409, "VERSION_CONFLICT", "Statement line was modified by another request. Refresh and retry.")
-
-    amt_cents = int(stmt["amount_cents"])
-    abs_cents = abs(amt_cents)
     now = utc_now_iso()
 
     with atomic_tx(conn):
+        stmt = conn.execute(
+            "SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?",
+            (stmt_id, org_id, bank_account_id),
+        ).fetchone()
+        if stmt is None:
+            raise ApiError(404, "STATEMENT_LINE_NOT_FOUND", "Bank statement line not found.")
+        if stmt["reconcile_status"] != "UNRECONCILED":
+            raise ApiError(409, "ALREADY_RECONCILED", "This bank statement line has already been reconciled.")
+        if expected_version is not None and int(stmt["version"]) != int(expected_version):
+            raise ApiError(409, "VERSION_CONFLICT", "Statement line was modified by another request. Refresh and retry.")
+
+        amt_cents = int(stmt["amount_cents"])
+        abs_cents = abs(amt_cents)
+
         if action == "MATCH_EXISTING_PAYMENT":
             pay_id = payload.get("paymentId")
             pay = conn.execute(
@@ -583,8 +662,38 @@ def reconcile_statement_line(
             )
             write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "MATCHED_PAYMENT", f"Matched statement line to existing Payment {pay['id'][:8]}.")
 
+        elif action == "MATCH_TRANSFER":
+            btx_id = payload.get("matchedBankTransactionId") or payload.get("bankTransactionId")
+            trf = conn.execute(
+                "SELECT * FROM bank_transactions WHERE id = ? AND org_id = ? AND tx_type = 'TRANSFER' AND status = 'AUTHORISED'",
+                (btx_id, org_id),
+            ).fetchone()
+            if trf is None:
+                raise ApiError(404, "TRANSFER_NOT_FOUND", "Inter-bank transfer not found.")
+            expected_signed = int(trf["total_cents"]) if trf["transfer_account_id"] == bank_account_id else (-int(trf["total_cents"]) if trf["bank_account_id"] == bank_account_id else None)
+            if expected_signed is None or expected_signed != amt_cents:
+                raise ApiError(422, "AMOUNT_MISMATCH", "Transfer direction or amount does not match statement line.")
+            already_matched = conn.execute(
+                "SELECT 1 FROM bank_statement_lines WHERE org_id = ? AND bank_account_id = ? AND reconcile_status = 'RECONCILED' AND matched_entity_type = 'BANK_TRANSACTION' AND matched_entity_id = ?",
+                (org_id, bank_account_id, trf["id"]),
+            ).fetchone()
+            if already_matched:
+                raise ApiError(409, "TRANSFER_ALREADY_MATCHED", "This transfer is already reconciled on this bank account.")
+            conn.execute("UPDATE bank_transactions SET is_reconciled = 1 WHERE id = ?", (trf["id"],))
+            conn.execute(
+                """
+                UPDATE bank_statement_lines
+                SET reconcile_status='RECONCILED', matched_entity_type='BANK_TRANSACTION', matched_entity_id=?, reconciled_at=?, version=version+1
+                WHERE id=?
+                """,
+                (trf["id"], now, stmt_id),
+            )
+            write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "MATCHED_TRANSFER", f"Matched statement line to existing Transfer {trf['id'][:8]} (no duplicate journal).")
+
         elif action == "MATCH_INVOICE":
             allocs = payload.get("matchAllocations") or ([{"invoiceId": payload["invoiceId"], "amount": payload.get("amount")}] if payload.get("invoiceId") else [])
+            if not allocs:
+                raise ApiError(422, "MATCH_MISSING", "Select at least one invoice or bill to match.")
             ma = payload.get("minorAdjustment", 0)
             if isinstance(ma, dict):
                 adj_cents = cents_from_value(ma.get("amount", 0))
@@ -619,24 +728,30 @@ def reconcile_statement_line(
                 )
                 payment_ids.append(res["id"])
 
+            adj_btx_id: str | None = None
             if adj_cents != 0:
                 if not adj_account_id:
                     adj_account_id = get_system_account(conn, org_id, "ROUNDING")["id"]
                 adj_tax = get_tax_rate_by_code(conn, org_id, "BASEXCLUDED")["id"]
                 signed_adj = adj_cents if amt_cents > 0 else -adj_cents
-                _create_bank_tx_core(
+                adj_btx_id, _, _ = _create_bank_tx_core(
                     conn, org_id=org_id, bank_account_id=bank_account_id, tx_date=stmt["tx_date"], signed_amount_cents=signed_adj,
                     payload={"reference": "Minor adjustment", "taxMode": "NO_TAX", "lines": [{"accountId": adj_account_id, "taxRateId": adj_tax, "amount": decimal_str_from_cents(abs(signed_adj)), "description": "Minor adjustment during reconciliation"}]},
                     actor_user_id=actor_user_id, actor_name=actor_name, actor_role=actor_role, is_reconciled=True,
                 )
 
+            matched_ids_blob = (
+                json.dumps({"paymentIds": payment_ids, "adjustmentBankTxId": adj_btx_id})
+                if adj_btx_id
+                else json.dumps(payment_ids)
+            )
             conn.execute(
                 """
                 UPDATE bank_statement_lines
                 SET reconcile_status='RECONCILED', matched_entity_type=?, matched_entity_id=?, matched_entity_ids_json=?, reconciled_at=?, version=version+1
                 WHERE id=?
                 """,
-                ("PAYMENT" if len(payment_ids) == 1 else "PAYMENT_GROUP", payment_ids[0], json.dumps(payment_ids), now, stmt_id),
+                ("PAYMENT" if len(payment_ids) == 1 else "PAYMENT_GROUP", payment_ids[0], matched_ids_blob, now, stmt_id),
             )
             write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "RECONCILED_MATCH", f"Reconciled statement line via {len(payment_ids)} invoice payment(s).")
 
@@ -680,41 +795,80 @@ def reconcile_statement_line(
             if tgt is None:
                 raise ApiError(404, "TARGET_BANK_NOT_FOUND", "Transfer destination bank account not found.")
 
-            # If bank statement amt < 0: Money left bank_account_id -> Credit bank_account_id, Debit target_bank_id
-            # If bank statement amt > 0: Money entered bank_account_id -> Debit bank_account_id, Credit target_bank_id
-            dr_bank = target_bank_id if amt_cents < 0 else bank_account_id
-            cr_bank = bank_account_id if amt_cents < 0 else target_bank_id
-            tx_id = new_id()
-            jid, jnum = post_journal(
-                conn,
-                org_id=org_id,
-                journal_date=stmt["tx_date"],
-                source_type="TRANSFER",
-                source_id=tx_id,
-                reference=payload.get("reference") or stmt["reference"] or "Bank Transfer",
-                narration="Bank Transfer",
-                lines=[
-                    {"account_id": dr_bank, "description": "Bank Transfer In", "debit_cents": abs_cents, "credit_cents": 0},
-                    {"account_id": cr_bank, "description": "Bank Transfer Out", "debit_cents": 0, "credit_cents": abs_cents},
-                ],
-                actor_user_id=actor_user_id,
-            )
-            conn.execute(
-                """
-                INSERT INTO bank_transactions (id, org_id, tx_type, bank_account_id, transfer_account_id, tx_date, reference, tax_mode, sub_total_cents, total_tax_cents, total_cents, is_reconciled, status, journal_id, created_at)
-                VALUES (?, ?, 'TRANSFER', ?, ?, ?, ?, 'NO_TAX', ?, 0, ?, 1, 'AUTHORISED', ?, ?)
-                """,
-                (tx_id, org_id, bank_account_id, target_bank_id, stmt["tx_date"], payload.get("reference") or "Transfer", abs_cents, abs_cents, jid, now),
-            )
-            conn.execute(
-                """
-                UPDATE bank_statement_lines
-                SET reconcile_status='RECONCILED', matched_entity_type='BANK_TRANSACTION', matched_entity_id=?, reconciled_at=?, version=version+1
-                WHERE id=?
-                """,
-                (tx_id, now, stmt_id),
-            )
-            write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "RECONCILED_TRANSFER", f"Recorded bank transfer of {decimal_str_from_cents(abs_cents)} (Journal #{jnum}).")
+            # Match existing open opposite-side inter-bank transfer (±7 days) to avoid duplicate posting
+            stmt_d = parse_iso_date(stmt["tx_date"])
+            sibling = None
+            if not payload.get("forceCreateNew"):
+                src_bank_expected = target_bank_id if amt_cents > 0 else bank_account_id
+                dst_bank_expected = bank_account_id if amt_cents > 0 else target_bank_id
+                candidates = conn.execute(
+                    """
+                    SELECT * FROM bank_transactions bt
+                    WHERE bt.org_id = ? AND bt.tx_type = 'TRANSFER' AND bt.status = 'AUTHORISED' AND bt.total_cents = ?
+                      AND bt.bank_account_id = ? AND bt.transfer_account_id = ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM bank_statement_lines s
+                          WHERE s.org_id = bt.org_id AND s.bank_account_id = ?
+                            AND s.reconcile_status = 'RECONCILED'
+                            AND s.matched_entity_type = 'BANK_TRANSACTION'
+                            AND s.matched_entity_id = bt.id
+                      )
+                    ORDER BY bt.tx_date
+                    """,
+                    (org_id, abs_cents, src_bank_expected, dst_bank_expected, bank_account_id),
+                ).fetchall()
+                for cand in candidates:
+                    if abs((stmt_d - parse_iso_date(cand["tx_date"])).days) <= 7:
+                        sibling = cand
+                        break
+
+            if sibling is not None:
+                conn.execute("UPDATE bank_transactions SET is_reconciled = 1 WHERE id = ?", (sibling["id"],))
+                conn.execute(
+                    """
+                    UPDATE bank_statement_lines
+                    SET reconcile_status='RECONCILED', matched_entity_type='BANK_TRANSACTION', matched_entity_id=?, reconciled_at=?, version=version+1
+                    WHERE id=?
+                    """,
+                    (sibling["id"], now, stmt_id),
+                )
+                write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "MATCHED_TRANSFER", f"Matched statement line to existing inter-bank transfer {sibling['id'][:8]}.")
+            else:
+                # If bank statement amt < 0: Money left bank_account_id -> Credit bank_account_id, Debit target_bank_id
+                # If bank statement amt > 0: Money entered bank_account_id -> Debit bank_account_id, Credit target_bank_id
+                dr_bank = target_bank_id if amt_cents < 0 else bank_account_id
+                cr_bank = bank_account_id if amt_cents < 0 else target_bank_id
+                tx_id = new_id()
+                jid, jnum = post_journal(
+                    conn,
+                    org_id=org_id,
+                    journal_date=stmt["tx_date"],
+                    source_type="TRANSFER",
+                    source_id=tx_id,
+                    reference=payload.get("reference") or stmt["reference"] or "Bank Transfer",
+                    narration="Bank Transfer",
+                    lines=[
+                        {"account_id": dr_bank, "description": "Bank Transfer In", "debit_cents": abs_cents, "credit_cents": 0},
+                        {"account_id": cr_bank, "description": "Bank Transfer Out", "debit_cents": 0, "credit_cents": abs_cents},
+                    ],
+                    actor_user_id=actor_user_id,
+                )
+                conn.execute(
+                    """
+                    INSERT INTO bank_transactions (id, org_id, tx_type, bank_account_id, transfer_account_id, tx_date, reference, tax_mode, sub_total_cents, total_tax_cents, total_cents, is_reconciled, status, journal_id, created_at)
+                    VALUES (?, ?, 'TRANSFER', ?, ?, ?, ?, 'NO_TAX', ?, 0, ?, 1, 'AUTHORISED', ?, ?)
+                    """,
+                    (tx_id, org_id, bank_account_id, target_bank_id, stmt["tx_date"], payload.get("reference") or "Transfer", abs_cents, abs_cents, jid, now),
+                )
+                conn.execute(
+                    """
+                    UPDATE bank_statement_lines
+                    SET reconcile_status='RECONCILED', matched_entity_type='BANK_TRANSACTION', matched_entity_id=?, reconciled_at=?, version=version+1
+                    WHERE id=?
+                    """,
+                    (tx_id, now, stmt_id),
+                )
+                write_audit(conn, org_id, actor_user_id, actor_name, "BANK_RECONCILIATION", stmt_id, "RECONCILED_TRANSFER", f"Recorded bank transfer of {decimal_str_from_cents(abs_cents)} (Journal #{jnum}).")
 
         else:
             raise ApiError(400, "INVALID_RECONCILE_ACTION", f"Unknown action '{action}'.")
@@ -732,63 +886,73 @@ def cash_coding_batch_apply(
     actor_name: str,
     actor_role: str,
 ) -> dict[str, Any]:
-    """Apply Cash Coding grid selections (Account + TaxRate + Tracking) and reconcile multiple lines at once."""
+    """Atomically apply Cash Coding grid selections (Account + TaxRate + Tracking) and reconcile all rows together."""
     assert_can_write(actor_role)
     if not items:
         raise ApiError(422, "EMPTY_BATCH", "Select at least one Cash Coding row.")
     reconciled = 0
-    for it in items:
-        stmt = conn.execute(
-            "SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?",
-            (it["statementLineId"], org_id, bank_account_id),
-        ).fetchone()
-        if stmt is None or stmt["reconcile_status"] != "UNRECONCILED":
-            continue
-        abs_amt_str = decimal_str_from_cents(abs(int(stmt["amount_cents"])))
-        reconcile_statement_line(
-            conn,
-            org_id=org_id,
-            bank_account_id=bank_account_id,
-            payload={
-                "statementLineId": stmt["id"],
-                "version": stmt["version"],
-                "action": "CREATE_BANK_TX",
-                "createPayload": {
-                    "contactId": it.get("contactId"),
-                    "taxMode": it.get("taxMode") or "INCLUSIVE",
-                    "reference": it.get("reference") or stmt["reference"],
-                    "lines": it.get("lines") or [
-                        {
-                            "description": it.get("description") or stmt["description"] or stmt["payee"] or "Cash Coding",
-                            "accountId": it["accountId"],
-                            "taxRateId": it["taxRateId"],
-                            "tracking1OptionId": it.get("tracking1OptionId"),
-                            "amount": abs_amt_str,
-                        }
-                    ],
+    with atomic_tx(conn):
+        for idx, it in enumerate(items, start=1):
+            stmt_id = it.get("statementLineId")
+            if not stmt_id:
+                raise ApiError(422, "MISSING_STATEMENT_LINE_ID", f"Row {idx}: statementLineId is required.")
+            stmt = conn.execute(
+                "SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?",
+                (stmt_id, org_id, bank_account_id),
+            ).fetchone()
+            if stmt is None:
+                raise ApiError(404, "STATEMENT_LINE_NOT_FOUND", f"Row {idx}: statement line not found.")
+            if stmt["reconcile_status"] != "UNRECONCILED":
+                raise ApiError(409, "ALREADY_RECONCILED", f"Row {idx}: statement line was already reconciled.")
+            if not it.get("lines") and (not it.get("accountId") or not it.get("taxRateId")):
+                raise ApiError(422, "CASH_CODING_FIELDS_MISSING", f"Row {idx}: accountId and taxRateId are required.")
+            abs_amt_str = decimal_str_from_cents(abs(int(stmt["amount_cents"])))
+            reconcile_statement_line(
+                conn,
+                org_id=org_id,
+                bank_account_id=bank_account_id,
+                payload={
+                    "statementLineId": stmt["id"],
+                    "version": it["version"] if it.get("version") is not None else stmt["version"],
+                    "action": "CREATE_BANK_TX",
+                    "createPayload": {
+                        "contactId": it.get("contactId"),
+                        "taxMode": it.get("taxMode") or "INCLUSIVE",
+                        "reference": it.get("reference") or stmt["reference"],
+                        "lines": it.get("lines") or [
+                            {
+                                "description": it.get("description") or stmt["description"] or stmt["payee"] or "Cash Coding",
+                                "accountId": it["accountId"],
+                                "taxRateId": it["taxRateId"],
+                                "tracking1OptionId": it.get("tracking1OptionId"),
+                                "amount": abs_amt_str,
+                            }
+                        ],
+                    },
                 },
-            },
-            actor_user_id=actor_user_id,
-            actor_name=actor_name,
-            actor_role=actor_role,
-        )
-        reconciled += 1
+                actor_user_id=actor_user_id,
+                actor_name=actor_name,
+                actor_role=actor_role,
+            )
+            reconciled += 1
     return {"reconciledCount": reconciled}
 
 
 def unreconcile_statement_line(conn: sqlite3.Connection, *, org_id: str, bank_account_id: str, stmt_id: str, actor_user_id: str, actor_name: str, actor_role: str) -> dict[str, Any]:
     """Unlink statement line from Payment/BankTx without deleting the GL entry (matches Xero Unreconcile)."""
     assert_can_write(actor_role)
-    stmt = conn.execute("SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?", (stmt_id, org_id, bank_account_id)).fetchone()
-    if stmt is None or stmt["reconcile_status"] != "RECONCILED":
-        raise ApiError(404, "RECONCILED_LINE_NOT_FOUND", "Reconciled statement line not found.")
     with atomic_tx(conn):
+        stmt = conn.execute("SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?", (stmt_id, org_id, bank_account_id)).fetchone()
+        if stmt is None or stmt["reconcile_status"] != "RECONCILED":
+            raise ApiError(404, "RECONCILED_LINE_NOT_FOUND", "Reconciled statement line not found.")
         if stmt["matched_entity_type"] == "BANK_TRANSACTION" and stmt["matched_entity_id"]:
             conn.execute("UPDATE bank_transactions SET is_reconciled = 0 WHERE id = ?", (stmt["matched_entity_id"],))
         elif stmt["matched_entity_type"] in ("PAYMENT", "PAYMENT_GROUP"):
-            pids = json.loads(stmt["matched_entity_ids_json"] or "[]") or ([stmt["matched_entity_id"]] if stmt["matched_entity_id"] else [])
+            pids, adj_btx_id = _parse_matched_ids(stmt["matched_entity_ids_json"], stmt["matched_entity_id"])
             for pid in pids:
                 conn.execute("UPDATE payments SET is_reconciled = 0 WHERE id = ?", (pid,))
+            if adj_btx_id:
+                conn.execute("UPDATE bank_transactions SET is_reconciled = 0 WHERE id = ?", (adj_btx_id,))
         conn.execute(
             "UPDATE bank_statement_lines SET reconcile_status='UNRECONCILED', matched_entity_type=NULL, matched_entity_id=NULL, matched_entity_ids_json=NULL, reconciled_at=NULL, version=version+1 WHERE id=?",
             (stmt_id,),
@@ -800,23 +964,35 @@ def unreconcile_statement_line(conn: sqlite3.Connection, *, org_id: str, bank_ac
 def remove_and_redo_statement_line(conn: sqlite3.Connection, *, org_id: str, bank_account_id: str, stmt_id: str, actor_user_id: str, actor_name: str, actor_role: str) -> dict[str, Any]:
     """Reverse posted Payment or BankTransaction with append-only reversal journal & reopen statement line (Xero Remove & Redo)."""
     assert_can_write(actor_role)
-    stmt = conn.execute("SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?", (stmt_id, org_id, bank_account_id)).fetchone()
-    if stmt is None or stmt["reconcile_status"] != "RECONCILED":
-        raise ApiError(404, "RECONCILED_LINE_NOT_FOUND", "Reconciled statement line not found.")
-    assert_period_unlocked(conn, org_id, stmt["tx_date"], actor_role)
-
     with atomic_tx(conn):
+        stmt = conn.execute("SELECT * FROM bank_statement_lines WHERE id = ? AND org_id = ? AND bank_account_id = ?", (stmt_id, org_id, bank_account_id)).fetchone()
+        if stmt is None or stmt["reconcile_status"] != "RECONCILED":
+            raise ApiError(404, "RECONCILED_LINE_NOT_FOUND", "Reconciled statement line not found.")
+        assert_period_unlocked(conn, org_id, stmt["tx_date"], actor_role)
+
         if stmt["matched_entity_type"] == "BANK_TRANSACTION" and stmt["matched_entity_id"]:
             btx = conn.execute("SELECT * FROM bank_transactions WHERE id = ? AND status = 'AUTHORISED'", (stmt["matched_entity_id"],)).fetchone()
             if btx:
-                src_rev = {"RECEIVE": "CASHREC_REVERSAL", "SPEND": "CASHPAID_REVERSAL", "TRANSFER": "TRANSFER_REVERSAL"}[btx["tx_type"]]
-                rev_jid, _ = reverse_journal(conn, org_id=org_id, original_journal_id=btx["journal_id"], reversal_date=btx["tx_date"], source_type=src_rev, source_id=btx["id"], narration=f"Remove & Redo {btx['tx_type']}", actor_user_id=actor_user_id)
-                conn.execute("UPDATE bank_transactions SET status='DELETED', is_reconciled=0, reversal_journal_id=? WHERE id=?", (rev_jid, btx["id"]))
+                assert_period_unlocked(conn, org_id, btx["tx_date"], actor_role)
+                _reverse_bank_tx_row(conn, org_id, btx, actor_user_id, f"Remove & Redo {btx['tx_type']}")
+                conn.execute(
+                    """
+                    UPDATE bank_statement_lines
+                    SET reconcile_status='UNRECONCILED', matched_entity_type=NULL, matched_entity_id=NULL, matched_entity_ids_json=NULL, reconciled_at=NULL, version=version+1
+                    WHERE org_id = ? AND matched_entity_type = 'BANK_TRANSACTION' AND matched_entity_id = ? AND id != ?
+                    """,
+                    (org_id, btx["id"], stmt_id),
+                )
         elif stmt["matched_entity_type"] in ("PAYMENT", "PAYMENT_GROUP"):
             from .documents import delete_payment
-            pids = json.loads(stmt["matched_entity_ids_json"] or "[]") or ([stmt["matched_entity_id"]] if stmt["matched_entity_id"] else [])
+            pids, adj_btx_id = _parse_matched_ids(stmt["matched_entity_ids_json"], stmt["matched_entity_id"])
             for pid in pids:
                 delete_payment(conn, org_id=org_id, payment_id=pid, actor_user_id=actor_user_id, actor_name=actor_name, actor_role=actor_role)
+            if adj_btx_id:
+                adj_btx = conn.execute("SELECT * FROM bank_transactions WHERE id = ? AND status = 'AUTHORISED'", (adj_btx_id,)).fetchone()
+                if adj_btx:
+                    assert_period_unlocked(conn, org_id, adj_btx["tx_date"], actor_role)
+                    _reverse_bank_tx_row(conn, org_id, adj_btx, actor_user_id, "Remove & Redo Minor Adjustment")
 
         conn.execute(
             "UPDATE bank_statement_lines SET reconcile_status='UNRECONCILED', matched_entity_type=NULL, matched_entity_id=NULL, matched_entity_ids_json=NULL, reconciled_at=NULL, version=version+1 WHERE id=?",

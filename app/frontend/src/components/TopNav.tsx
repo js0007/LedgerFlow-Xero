@@ -83,7 +83,7 @@ export const TopNav: React.FC<Props> = ({
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey) return;
+      if (activeOrg.role === "READONLY" || !e.altKey || e.ctrlKey || e.metaKey) return;
       const k = e.key.toLowerCase();
       if (k === "i") { e.preventDefault(); onQuickCreate("ACCREC"); }
       else if (k === "b") { e.preventDefault(); onQuickCreate("ACCPAY"); }
@@ -98,7 +98,7 @@ export const TopNav: React.FC<Props> = ({
       document.removeEventListener("mousedown", onDocClick);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onQuickCreate]);
+  }, [onQuickCreate, activeOrg.role]);
 
   const go = (r: RouteKey) => {
     setOpenMenu(null);
@@ -296,42 +296,44 @@ export const TopNav: React.FC<Props> = ({
 
         {/* Right Controls: + Create new, Role Switcher */}
         <div className="x-nav-right">
-          <div className="x-dropdown-wrap">
-            <button
-              className="x-icon-circle"
-              title="Create new (Alt+I, Alt+B, Alt+J...)"
-              onClick={() => setOpenMenu(openMenu === "create" ? null : "create")}
-              data-testid="quick-create-btn"
-            >
-              <Plus size={18} />
-            </button>
-            {openMenu === "create" && (
-              <div className="x-dropdown-menu right" style={{ minWidth: 240 }}>
-                <div className="x-menu-section">Create New</div>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCREC"); }}>
-                  <span>Sales Invoice</span><span className="x-kbd">Alt+I</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCPAY"); }}>
-                  <span>Bill</span><span className="x-kbd">Alt+B</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCRECCREDIT"); }}>
-                  <span>Sales Credit Note</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("QUOTE"); }}>
-                  <span>Quote</span><span className="x-kbd">Alt+Q</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("PO"); }}>
-                  <span>Purchase Order</span><span className="x-kbd">Alt+O</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("MJ"); }}>
-                  <span>Manual Journal</span><span className="x-kbd">Alt+J</span>
-                </button>
-                <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("CONTACT"); }}>
-                  <span>Contact</span><span className="x-kbd">Alt+C</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {activeOrg.role !== "READONLY" && (
+            <div className="x-dropdown-wrap">
+              <button
+                className="x-icon-circle"
+                title="Create new (Alt+I, Alt+B, Alt+J...)"
+                onClick={() => setOpenMenu(openMenu === "create" ? null : "create")}
+                data-testid="quick-create-btn"
+              >
+                <Plus size={18} />
+              </button>
+              {openMenu === "create" && (
+                <div className="x-dropdown-menu right" style={{ minWidth: 240 }}>
+                  <div className="x-menu-section">Create New</div>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCREC"); }}>
+                    <span>Sales Invoice</span><span className="x-kbd">Alt+I</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCPAY"); }}>
+                    <span>Bill</span><span className="x-kbd">Alt+B</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("ACCRECCREDIT"); }}>
+                    <span>Sales Credit Note</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("QUOTE"); }}>
+                    <span>Quote</span><span className="x-kbd">Alt+Q</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("PO"); }}>
+                    <span>Purchase Order</span><span className="x-kbd">Alt+O</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("MJ"); }}>
+                    <span>Manual Journal</span><span className="x-kbd">Alt+J</span>
+                  </button>
+                  <button className="x-menu-item" onClick={() => { setOpenMenu(null); onQuickCreate("CONTACT"); }}>
+                    <span>Contact</span><span className="x-kbd">Alt+C</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             className="x-role-badge"

@@ -21,6 +21,7 @@ export const DashboardView: React.FC<Props> = ({
   onQuickCreate,
   onSwitchToDemo,
 }) => {
+  const isReadOnly = org.role === "READONLY";
   if (!data) {
     return (
       <div className="x-main">
@@ -49,12 +50,16 @@ export const DashboardView: React.FC<Props> = ({
               Open Demo Company (!VD61z)
             </button>
           )}
-          <button className="x-btn" onClick={() => onQuickCreate("ACCPAY")}>
-            <Receipt size={14} /> New Bill
-          </button>
-          <button className="x-btn x-btn-primary" onClick={() => onQuickCreate("ACCREC")}>
-            <Plus size={14} /> New Invoice
-          </button>
+          {!isReadOnly && (
+            <>
+              <button className="x-btn" onClick={() => onQuickCreate("ACCPAY")}>
+                <Receipt size={14} /> New Bill
+              </button>
+              <button className="x-btn x-btn-primary" onClick={() => onQuickCreate("ACCREC")}>
+                <Plus size={14} /> New Invoice
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -120,7 +125,7 @@ export const DashboardView: React.FC<Props> = ({
                             </div>
                           </div>
                           <div>
-                            <div style={{ fontSize: 11, color: "var(--xui-ink-muted)" }}>Balance in Xero</div>
+                            <div style={{ fontSize: 11, color: "var(--xui-ink-muted)" }}>Balance in LedgerFlow</div>
                             <div className="num" style={{ fontWeight: 700, fontSize: 15, color: bookNeg ? "var(--xui-red)" : "var(--xui-ink)" }}>
                               ${fmtAudSigned(b.bookBalance)}
                               {bookNeg && <span className="x-badge amber" style={{ marginLeft: 6 }}>Overdraft</span>}
@@ -145,9 +150,11 @@ export const DashboardView: React.FC<Props> = ({
                           <button className="x-btn x-btn-sm" onClick={() => onNavigate("cash-coding", { bankId: b.id })}>
                             Cash Coding
                           </button>
-                          <button className="x-btn x-btn-sm" onClick={() => onOpenImport(b.id)}>
-                            <Upload size={12} /> Import CSV
-                          </button>
+                          {!isReadOnly && (
+                            <button className="x-btn x-btn-sm" onClick={() => onOpenImport(b.id)}>
+                              <Upload size={12} /> Import CSV
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -7,7 +7,7 @@ from datetime import date
 
 from flask import Blueprint, g, jsonify, request
 
-from ..db import ApiError, check_idempotency, save_idempotency
+from ..db import ApiError, atomic_tx, check_idempotency, save_idempotency
 from ..money import cents_from_value
 from ..services import banking, bas, documents, manual_journals, reports
 from .core_routes import get_actor
@@ -18,12 +18,13 @@ acc_bp = Blueprint("accounting", __name__, url_prefix="/api/v1")
 def _idempotent(conn, org_id: str, handler):
     key = request.headers.get("Idempotency-Key")
     payload = request.get_json(silent=True) or {}
-    cached = check_idempotency(conn, org_id, key, payload)
-    if cached is not None:
-        return jsonify(cached[1]), cached[0]
-    status, body = handler(payload)
-    save_idempotency(conn, org_id, key, payload, status, body)
-    return jsonify(body), status
+    with atomic_tx(conn):
+        cached = check_idempotency(conn, org_id, key, payload)
+        if cached is not None:
+            return jsonify(cached[1]), cached[0]
+        status, body = handler(payload)
+        save_idempotency(conn, org_id, key, payload, status, body)
+        return jsonify(body), status
 
 
 # --- Manual Journals ---
@@ -98,6 +99,21 @@ def convert_quote(org_id: str, quote_id: str):
     return jsonify(documents.convert_quote_to_invoice(conn, org_id=org_id, quote_id=quote_id, approve=bool(body.get("approve", False)), actor_user_id=uid, actor_name=uname, actor_role=role))
 
 
+@acc_bp.patch("/orgs/<org_id>/quotes/<quote_id>")
+def patch_quote(org_id: str, quote_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    body = request.get_json(force=True)
+    return jsonify(documents.update_quote(conn, org_id=org_id, quote_id=quote_id, payload=body, actor_user_id=uid, actor_name=uname, actor_role=role))
+
+
+@acc_bp.delete("/orgs/<org_id>/quotes/<quote_id>")
+def delete_quote_route(org_id: str, quote_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    return jsonify(documents.delete_quote(conn, org_id=org_id, quote_id=quote_id, actor_user_id=uid, actor_name=uname, actor_role=role))
+
+
 @acc_bp.get("/orgs/<org_id>/purchase-orders")
 def list_pos(org_id: str):
     conn = g.db
@@ -112,6 +128,21 @@ def create_po(org_id: str):
     uid, uname, role = get_actor(conn, org_id)
     body = request.get_json(force=True)
     return jsonify(documents.create_purchase_order(conn, org_id=org_id, payload=body, actor_user_id=uid, actor_name=uname, actor_role=role)), 201
+
+
+@acc_bp.patch("/orgs/<org_id>/purchase-orders/<po_id>")
+def patch_po(org_id: str, po_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    body = request.get_json(force=True)
+    return jsonify(documents.update_purchase_order(conn, org_id=org_id, po_id=po_id, payload=body, actor_user_id=uid, actor_name=uname, actor_role=role))
+
+
+@acc_bp.delete("/orgs/<org_id>/purchase-orders/<po_id>")
+def delete_po_route(org_id: str, po_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    return jsonify(documents.delete_purchase_order(conn, org_id=org_id, po_id=po_id, actor_user_id=uid, actor_name=uname, actor_role=role))
 
 
 @acc_bp.post("/orgs/<org_id>/purchase-orders/<po_id>/convert")
@@ -160,7 +191,14 @@ def update_invoice(org_id: str, invoice_id: str):
     conn = g.db
     uid, uname, role = get_actor(conn, org_id)
     body = request.get_json(force=True)
-    return jsonify(documents.update_draft_invoice(conn, org_id=org_id, invoice_id=invoice_id, payload=body, actor_user_id=uid, actor_name=uname, actor_role=role))
+    return jsonify(documents.update_invoice(conn, org_id=org_id, invoice_id=invoice_id, payload=body, actor_user_id=uid, actor_name=uname, actor_role=role))
+
+
+@acc_bp.delete("/orgs/<org_id>/invoices/<invoice_id>")
+def delete_invoice_route(org_id: str, invoice_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    return jsonify(documents.delete_invoice(conn, org_id=org_id, invoice_id=invoice_id, actor_user_id=uid, actor_name=uname, actor_role=role))
 
 
 @acc_bp.post("/orgs/<org_id>/invoices/<invoice_id>/approve")
@@ -199,18 +237,30 @@ def allocate_cn(org_id: str, credit_note_id: str):
     )
 
 
+@acc_bp.delete("/orgs/<org_id>/credit-note-allocations/<allocation_id>")
+def deallocate_cn_route(org_id: str, allocation_id: str):
+    conn = g.db
+    uid, uname, role = get_actor(conn, org_id)
+    return jsonify(documents.deallocate_credit_note(conn, org_id=org_id, allocation_id=allocation_id, actor_user_id=uid, actor_name=uname, actor_role=role))
+
+
 @acc_bp.post("/orgs/<org_id>/payments")
 def record_payment_route(org_id: str):
     conn = g.db
     uid, uname, role = get_actor(conn, org_id)
     body = request.get_json(force=True)
+    inv_id = body.get("invoiceId")
+    bank_id = body.get("bankAccountId")
+    raw_amt = body.get("amount")
+    if not inv_id or not bank_id or raw_amt is None:
+        raise ApiError(422, "PAYMENT_FIELDS_REQUIRED", "invoiceId, bankAccountId and amount are required.")
     res = documents.record_payment(
         conn,
         org_id=org_id,
-        invoice_id=body["invoiceId"],
-        bank_account_id=body["bankAccountId"],
+        invoice_id=inv_id,
+        bank_account_id=bank_id,
         payment_date=body.get("paymentDate") or date.today().isoformat(),
-        amount_cents=cents_from_value(body["amount"]),
+        amount_cents=cents_from_value(raw_amt),
         reference=body.get("reference"),
         actor_user_id=uid,
         actor_name=uname,
@@ -318,7 +368,10 @@ def unreconcile_route(org_id: str, bank_account_id: str):
     conn = g.db
     uid, uname, role = get_actor(conn, org_id)
     body = request.get_json(force=True)
-    return jsonify(banking.unreconcile_statement_line(conn, org_id=org_id, bank_account_id=bank_account_id, stmt_id=body["statementLineId"], actor_user_id=uid, actor_name=uname, actor_role=role))
+    stmt_id = body.get("statementLineId")
+    if not stmt_id:
+        raise ApiError(422, "STATEMENT_LINE_REQUIRED", "statementLineId is required.")
+    return jsonify(banking.unreconcile_statement_line(conn, org_id=org_id, bank_account_id=bank_account_id, stmt_id=stmt_id, actor_user_id=uid, actor_name=uname, actor_role=role))
 
 
 @acc_bp.post("/orgs/<org_id>/bank-accounts/<bank_account_id>/remove-redo")
@@ -326,7 +379,10 @@ def remove_redo_route(org_id: str, bank_account_id: str):
     conn = g.db
     uid, uname, role = get_actor(conn, org_id)
     body = request.get_json(force=True)
-    return jsonify(banking.remove_and_redo_statement_line(conn, org_id=org_id, bank_account_id=bank_account_id, stmt_id=body["statementLineId"], actor_user_id=uid, actor_name=uname, actor_role=role))
+    stmt_id = body.get("statementLineId")
+    if not stmt_id:
+        raise ApiError(422, "STATEMENT_LINE_REQUIRED", "statementLineId is required.")
+    return jsonify(banking.remove_and_redo_statement_line(conn, org_id=org_id, bank_account_id=bank_account_id, stmt_id=stmt_id, actor_user_id=uid, actor_name=uname, actor_role=role))
 
 
 @acc_bp.get("/orgs/<org_id>/bank-rules")
